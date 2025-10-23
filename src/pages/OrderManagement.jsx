@@ -1,84 +1,162 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // <-- Tambah useEffect
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+// ... (impor dnd-kit lainnya)
 import KanbanColumn from '../components/KanbanColumn';
+import { getOrders, updateOrderStatus } from '../api/apiService'; // <-- Impor API
 
-const initialColumns = {
-  'new-orders': {
-    id: 'new-orders',
+// Hapus 'initialColumns' yang lama
+
+// Buat struktur kolom yang kosong sebagai state awal
+const emptyColumns = {
+  'PAID': { // <-- Gunakan status backend sebagai 'id'
+    id: 'PAID',
     title: 'Pesanan Baru',
     status: 'PAID',
-    orders: [
-      { id: 'KNT-2025-001', time: '10:30', type: 'Dine-In', items: [{name: 'Nasi Goreng Spesial', qty: 2, price: 25000}, {name: 'Es Teh Manis', qty: 2, price: 5000}], total: 60000, status: 'PAID' },
-      { id: 'KNT-2025-002', time: '10:35', type: 'Takeaway', items: [{name: 'Mie Ayam Bakso', qty: 1, price: 18000}], total: 18000, status: 'PAID' },
-    ],
+    orders: [],
   },
-  'processing': {
-    id: 'processing',
+  'PROCESSING': {
+    id: 'PROCESSING',
     title: 'Sedang Diproses',
     status: 'PROCESSING',
-    orders: [
-      { id: 'KNT-2025-003', time: '10:25', type: 'Dine-In', items: [{name: 'Ayam Geprek + Nasi', qty: 1, price: 22000}, {name: 'Es Jeruk', qty: 1, price: 6000}], total: 28000, status: 'PROCESSING' },
-      { id: 'KNT-2025-004', time: '10:20', type: 'Takeaway', items: [{name: 'Soto Ayam', qty: 1, price: 20000}], total: 20000, status: 'PROCESSING' },
-    ],
+    orders: [],
   },
-  'ready': {
-    id: 'ready',
+  'READY': {
+    id: 'READY',
     title: 'Siap Diambil',
     status: 'READY',
-    orders: [
-      { id: 'KNT-2025-005', time: '10:15', type: 'Dine-In', items: [{name: 'Nasi Goreng Spesial', qty: 1, price: 25000}], total: 25000, status: 'READY' },
-    ],
+    orders: [],
   },
-  'completed': {
-    id: 'completed',
+  'COMPLETED': {
+    id: 'COMPLETED',
     title: 'Selesai',
     status: 'COMPLETED',
-    orders: [
-        { id: 'KNT-2025-006', time: '10:05', type: 'Takeaway', items: [{name: 'Mie Ayam Bakso', qty: 2, price: 18000}, {name: 'Es Teh Manis', qty: 2, price: 5000}], total: 46000, status: 'COMPLETED' },
-    ],
+    orders: [],
   },
 };
 
+// Fungsi helper untuk memformat item
+// Backend: { uuid: '...', references_code: 'KNT-...', ... }
+// Frontend: { id: '...', ... }
+const formatOrderForKanban = (order) => {
+  return {
+    ...order,
+    id: order.uuid, // <-- PENTING: Gunakan 'uuid' untuk ID dnd-kit
+  };
+};
+
 const OrderManagement = () => {
-  const [columns, setColumns] = useState(initialColumns);
+  const [columns, setColumns] = useState(emptyColumns);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor));
 
+  // --- Langkah 1: Ambil data saat komponen dimuat ---
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        const response = await getOrders();
+        
+        // Data dari API adalah array flat, misal: [order1, order2, ...]
+        // Kita perlu memilahnya ke dalam kolom
+        const sortedColumns = { ...emptyColumns };
+        
+        response.data.forEach(order => {
+          // Hanya tampilkan order yang relevan untuk Kanban
+          if (order.status in sortedColumns) {
+            sortedColumns[order.status].orders.push(formatOrderForKanban(order));
+          }
+        });
+
+        setColumns(sortedColumns);
+        setError(null);
+      } catch (err) {
+        setError('Gagal memuat pesanan.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []); // <-- [] berarti hanya jalan sekali saat mount
+
+  // --- Langkah 2: Tambahkan Panggilan API ke handleDragEnd ---
   const handleDragEnd = (event) => {
     const { active, over } = event;
 
     if (!over) return;
     
+    // 'active.id' adalah 'uuid' dari order yang digeser
+    const orderUuid = active.id; 
+    
+    // ID kontainer adalah status (misal: 'PAID', 'PROCESSING')
     const activeContainer = active.data.current.sortable.containerId;
     const overContainer = over.data.current?.sortable.containerId || over.id;
 
     if (activeContainer !== overContainer) {
+      
+      // 'overContainer' adalah status baru, misal: 'PROCESSING'
+      const newStatus = overContainer; 
+
+      // Optimistic Update: Update UI langsung
       setColumns((prev) => {
         const activeItems = prev[activeContainer].orders;
         const overItems = prev[overContainer].orders;
 
-        const activeIndex = activeItems.findIndex(item => item.id === active.id);
+        const activeIndex = activeItems.findIndex(item => item.id === orderUuid);
         const [movedItem] = activeItems.splice(activeIndex, 1);
         
-        // Update status item yang dipindah
-        movedItem.status = prev[overContainer].status;
+        // Update status item yang dipindah (di state lokal)
+        movedItem.status = newStatus;
 
         const overIndex = over.id in prev ? overItems.length : overItems.findIndex(item => item.id === over.id);
 
         overItems.splice(overIndex, 0, movedItem);
-
-        // TODO: Kirim pembaruan status ke backend API di sini
-        console.log(`Order ${active.id} moved from ${prev[activeContainer].status} to ${prev[overContainer].status}`);
         
         return {
           ...prev,
-          [activeContainer]: { ...prev[activeContainer], orders: activeItems },
-          [overContainer]: { ...prev[overContainer], orders: overItems },
+          [activeContainer]: { ...prev[activeContainer], orders: [...activeItems] },
+          [overContainer]: { ...prev[overContainer], orders: [...overItems] },
         };
       });
+
+      // --- Kirim pembaruan status ke backend API ---
+      console.log(`Mengirim update: Order ${orderUuid} -> Status ${newStatus}`);
+      
+      updateOrderStatus(orderUuid, newStatus)
+        .then(response => {
+          // Sukses! Data di backend sudah cocok dengan di UI
+          console.log('Update status berhasil:', response.data);
+        })
+        .catch(err => {
+          // Gagal! Tampilkan error dan (idealnya) kembalikan kartu ke posisi semula
+          console.error('Update status GAGAL:', err);
+          setError(`Gagal mengupdate order ${orderUuid}. Coba refresh.`);
+          // TODO: Implement "revert state" jika API gagal
+        });
     }
   };
 
+  // --- Langkah 3: Tampilkan status Loading/Error ---
+  if (loading) {
+    return (
+      <div className="p-4 text-center text-gray-500">
+        Memuat data pesanan...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <strong className="font-bold">Error!</strong>
+        <span className="block sm:inline"> {error}</span>
+      </div>
+    );
+  }
+
+  // --- Render Kanban Board ---
   return (
     <div>
       <header>
@@ -88,7 +166,12 @@ const OrderManagement = () => {
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8 items-start">
           {Object.values(columns).map((column) => (
-             <KanbanColumn key={column.id} id={column.id} title={column.title} orders={column.orders} />
+             <KanbanColumn 
+                key={column.id} 
+                id={column.id} // <-- 'id' sekarang 'PAID', 'PROCESSING', dll.
+                title={column.title} 
+                orders={column.orders} // <-- 'orders' berisi data dari backend
+             />
           ))}
         </div>
       </DndContext>
@@ -97,4 +180,3 @@ const OrderManagement = () => {
 };
 
 export default OrderManagement;
-

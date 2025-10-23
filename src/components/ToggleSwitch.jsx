@@ -3,7 +3,10 @@ import React from 'react';
 const ToggleSwitch = ({ isOn, handleToggle }) => {
   return (
     <div
-      onClick={handleToggle}
+      // --- PERBAIKAN ---
+      // Kirimkan nilai baru (!isOn) saat di-klik
+      onClick={() => handleToggle(!isOn)}
+      // --- AKHIR PERBAIKAN ---
       className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 ease-in-out ${
         isOn ? 'bg-blue-600' : 'bg-gray-300'
       }`}
