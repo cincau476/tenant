@@ -188,7 +188,7 @@ export const getOrders = () => {
 export const updateOrderStatus = (orderUuid, newStatus) => {
   // Backend UpdateOrderStatusView mengharapkan 'PATCH'
   // dengan body: { "status": "NAMA_STATUS_BARU" }
-  return apiClient.patch(`/orders/${orderUuid}/update-status/`, {
+  return apiClient.patch(`${orderUuid}/update-status/`, {
     status: newStatus,
   });
 };
