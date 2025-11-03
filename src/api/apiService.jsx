@@ -177,7 +177,7 @@ export const deleteVariantOption = (standId, groupId, optionId) => {
  * Endpoint: /orders/all/
  */
 export const getOrders = () => {
-  return apiClient.get('/orders/all/');
+  return apiClient.get('/all/');
 };
 
 /**
