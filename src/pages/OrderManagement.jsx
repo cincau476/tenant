@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from 'react'; // <-- Tambah useEffect
+import React, { useState, useEffect } from 'react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-// ... (impor dnd-kit lainnya)
+import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'; // Tambahkan impor
 import KanbanColumn from '../components/KanbanColumn';
-import { getOrders, updateOrderStatus } from '../api/apiService'; // <-- Impor API
+import { getOrders, updateOrderStatus } from '../api/apiService';
 
-// Hapus 'initialColumns' yang lama
-
-// Buat struktur kolom yang kosong sebagai state awal
+// Struktur kolom kosong
 const emptyColumns = {
-  'PAID': { // <-- Gunakan status backend sebagai 'id'
+  'PAID': {
     id: 'PAID',
     title: 'Pesanan Baru',
     status: 'PAID',
@@ -35,12 +33,10 @@ const emptyColumns = {
 };
 
 // Fungsi helper untuk memformat item
-// Backend: { uuid: '...', references_code: 'KNT-...', ... }
-// Frontend: { id: '...', ... }
 const formatOrderForKanban = (order) => {
   return {
     ...order,
-    id: order.uuid, // <-- PENTING: Gunakan 'uuid' untuk ID dnd-kit
+    id: order.uuid, // Gunakan 'uuid' untuk ID dnd-kit
   };
 };
 
@@ -50,19 +46,25 @@ const OrderManagement = () => {
   const [error, setError] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor));
 
-  // --- Langkah 1: Ambil data saat komponen dimuat ---
+  // --- Langkah 1: Ambil data dan PAKSA UNIK ---
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
         const response = await getOrders();
         
-        // Data dari API adalah array flat, misal: [order1, order2, ...]
+        // --- PERBAIKAN 1: ANTI-DUPLIKAT ---
+        // 1. Ambil data mentah (yang mungkin duplikat dari backend)
+        const rawOrders = response.data;
+        // 2. Buat versi unik secara paksa menggunakan Map berdasarkan UUID
+        const uniqueOrders = Array.from(new Map(rawOrders.map(order => [order.uuid, order])).values());
+        // --- AKHIR PERBAIKAN 1 ---
+
         // Kita perlu memilahnya ke dalam kolom
         const sortedColumns = { ...emptyColumns };
         
-        response.data.forEach(order => {
-          // Hanya tampilkan order yang relevan untuk Kanban
+        // 3. Gunakan 'uniqueOrders' (BUKAN 'response.data') untuk memproses
+        uniqueOrders.forEach(order => {
           if (order.status in sortedColumns) {
             sortedColumns[order.status].orders.push(formatOrderForKanban(order));
           }
@@ -79,38 +81,45 @@ const OrderManagement = () => {
     };
 
     fetchOrders();
-  }, []); // <-- [] berarti hanya jalan sekali saat mount
+  }, []);
 
-  // --- Langkah 2: Tambahkan Panggilan API ke handleDragEnd ---
+  // --- Langkah 2: Perbaiki handleDragEnd ---
   const handleDragEnd = (event) => {
     const { active, over } = event;
 
     if (!over) return;
     
-    // 'active.id' adalah 'uuid' dari order yang digeser
     const orderUuid = active.id; 
-    
-    // ID kontainer adalah status (misal: 'PAID', 'PROCESSING')
     const activeContainer = active.data.current.sortable.containerId;
     const overContainer = over.data.current?.sortable.containerId || over.id;
 
     if (activeContainer !== overContainer) {
       
-      // 'overContainer' adalah status baru, misal: 'PROCESSING'
       const newStatus = overContainer; 
 
-      // Optimistic Update: Update UI langsung
+      // Optimistic Update
       setColumns((prev) => {
+        // --- PERBAIKAN 2: PENCEGAH CRASH ---
+        // Cek jika 'overContainer' (tujuan) adalah kolom yang valid (ada di 'prev')
+        // Ini mencegah error "Cannot read properties of undefined (reading 'orders')"
+        if (!prev[overContainer]) {
+          console.warn(`Drop target tidak valid: ${overContainer}`);
+          return prev; // Batalkan update, jangan lakukan apa-apa
+        }
+        // --- AKHIR PERBAIKAN 2 ---
+
         const activeItems = prev[activeContainer].orders;
         const overItems = prev[overContainer].orders;
 
         const activeIndex = activeItems.findIndex(item => item.id === orderUuid);
         const [movedItem] = activeItems.splice(activeIndex, 1);
         
-        // Update status item yang dipindah (di state lokal)
         movedItem.status = newStatus;
 
-        const overIndex = over.id in prev ? overItems.length : overItems.findIndex(item => item.id === over.id);
+        // Tentukan index baru
+        const overIndex = over.id in prev 
+          ? overItems.length // Jika drop di kolom
+          : overItems.findIndex(item => item.id === over.id); // Jika drop di atas kartu lain
 
         overItems.splice(overIndex, 0, movedItem);
         
@@ -126,19 +135,17 @@ const OrderManagement = () => {
       
       updateOrderStatus(orderUuid, newStatus)
         .then(response => {
-          // Sukses! Data di backend sudah cocok dengan di UI
           console.log('Update status berhasil:', response.data);
         })
         .catch(err => {
-          // Gagal! Tampilkan error dan (idealnya) kembalikan kartu ke posisi semula
           console.error('Update status GAGAL:', err);
           setError(`Gagal mengupdate order ${orderUuid}. Coba refresh.`);
-          // TODO: Implement "revert state" jika API gagal
+          // TODO: Implement "revert state" (mengembalikan kartu) jika API gagal
         });
     }
   };
 
-  // --- Langkah 3: Tampilkan status Loading/Error ---
+  // --- (Sisa kode loading, error, dan render) ---
   if (loading) {
     return (
       <div className="p-4 text-center text-gray-500">
@@ -156,7 +163,6 @@ const OrderManagement = () => {
     );
   }
 
-  // --- Render Kanban Board ---
   return (
     <div>
       <header>
@@ -168,9 +174,9 @@ const OrderManagement = () => {
           {Object.values(columns).map((column) => (
              <KanbanColumn 
                 key={column.id} 
-                id={column.id} // <-- 'id' sekarang 'PAID', 'PROCESSING', dll.
+                id={column.id}
                 title={column.title} 
-                orders={column.orders} // <-- 'orders' berisi data dari backend
+                orders={column.orders}
              />
           ))}
         </div>
