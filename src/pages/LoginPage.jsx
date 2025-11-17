@@ -18,13 +18,10 @@ const LoginPage = ({ onLoginSuccess }) => {
 
     try {
       // 1. Panggil API login
-      const response = await login(username, password);
+      await login(username, password);
       
       // 2. Jika sukses, ambil token dari response
-      const token = response.data.token;
-
-      // 3. Simpan token ke localStorage
-      localStorage.setItem('authToken', token);
+      
 
       // 4. Beri tahu App.jsx bahwa login sukses
       onLoginSuccess();

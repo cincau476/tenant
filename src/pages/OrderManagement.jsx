@@ -1,69 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'; // Tambahkan impor
+// HAPUS SEMUA impor 'dnd-kit'
 import KanbanColumn from '../components/KanbanColumn';
 import { getOrders, updateOrderStatus } from '../api/apiService';
 
-// Struktur kolom kosong
+// Struktur kolom kosong (tidak berubah)
 const emptyColumns = {
-  'PAID': {
-    id: 'PAID',
-    title: 'Pesanan Baru',
-    status: 'PAID',
-    orders: [],
-  },
-  'PROCESSING': {
-    id: 'PROCESSING',
-    title: 'Sedang Diproses',
-    status: 'PROCESSING',
-    orders: [],
-  },
-  'READY': {
-    id: 'READY',
-    title: 'Siap Diambil',
-    status: 'READY',
-    orders: [],
-  },
-  'COMPLETED': {
-    id: 'COMPLETED',
-    title: 'Selesai',
-    status: 'COMPLETED',
-    orders: [],
-  },
+  'PAID': { id: 'PAID', title: 'Pesanan Baru', status: 'PAID', orders: [], },
+  'PROCESSING': { id: 'PROCESSING', title: 'Sedang Diproses', status: 'PROCESSING', orders: [], },
+  'READY': { id: 'READY', title: 'Siap Diambil', status: 'READY', orders: [], },
+  'COMPLETED': { id: 'COMPLETED', title: 'Selesai', status: 'COMPLETED', orders: [], },
 };
 
-// Fungsi helper untuk memformat item
+// Fungsi helper (tidak berubah)
 const formatOrderForKanban = (order) => {
-  return {
-    ...order,
-    id: order.uuid, // Gunakan 'uuid' untuk ID dnd-kit
-  };
+  return { ...order, id: order.uuid };
 };
 
 const OrderManagement = () => {
   const [columns, setColumns] = useState(emptyColumns);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const sensors = useSensors(useSensor(PointerSensor));
+  // HAPUS: const sensors = useSensors(useSensor(PointerSensor));
 
-  // --- Langkah 1: Ambil data dan PAKSA UNIK ---
+  // --- Langkah 1: Ambil data (Tidak berubah) ---
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
         const response = await getOrders();
         
-        // --- PERBAIKAN 1: ANTI-DUPLIKAT ---
-        // 1. Ambil data mentah (yang mungkin duplikat dari backend)
+        // --- Perbaikan Anti-Duplikat Anda (Sangat Penting) ---
+        // Ini mengatasi masalah kartu duplikat yang Anda lihat di screenshot
         const rawOrders = response.data;
-        // 2. Buat versi unik secara paksa menggunakan Map berdasarkan UUID
         const uniqueOrders = Array.from(new Map(rawOrders.map(order => [order.uuid, order])).values());
-        // --- AKHIR PERBAIKAN 1 ---
-
-        // Kita perlu memilahnya ke dalam kolom
+        
         const sortedColumns = { ...emptyColumns };
         
-        // 3. Gunakan 'uniqueOrders' (BUKAN 'response.data') untuk memproses
         uniqueOrders.forEach(order => {
           if (order.status in sortedColumns) {
             sortedColumns[order.status].orders.push(formatOrderForKanban(order));
@@ -83,69 +55,43 @@ const OrderManagement = () => {
     fetchOrders();
   }, []);
 
-  // --- Langkah 2: Perbaiki handleDragEnd ---
-  const handleDragEnd = (event) => {
-    const { active, over } = event;
+  // --- HAPUS: Seluruh fungsi handleDragEnd ---
 
-    if (!over) return;
-    
-    const orderUuid = active.id; 
-    const activeContainer = active.data.current.sortable.containerId;
-    const overContainer = over.data.current?.sortable.containerId || over.id;
+  // --- TAMBAHKAN: Fungsi baru untuk menangani klik tombol ---
+  const handleUpdateStatus = (orderToUpdate, newStatus) => {
+    // 1. Optimistic Update UI (Pindahkan kartu)
+    setColumns((prev) => {
+      const newColumns = JSON.parse(JSON.stringify(prev)); // Deep copy
+      const currentStatus = orderToUpdate.status;
 
-    if (activeContainer !== overContainer) {
+      // Hapus dari kolom lama
+      if (newColumns[currentStatus]) {
+         newColumns[currentStatus].orders = newColumns[currentStatus].orders.filter(o => o.id !== orderToUpdate.id);
+      }
+     
+      // Tambah ke kolom baru
+      const updatedOrder = { ...orderToUpdate, status: newStatus };
+      if (newColumns[newStatus]) {
+        // Tambahkan di urutan paling atas (atau 'push' untuk di bawah)
+        newColumns[newStatus].orders.unshift(updatedOrder);
+      }
       
-      const newStatus = overContainer; 
+      return newColumns;
+    });
 
-      // Optimistic Update
-      setColumns((prev) => {
-        // --- PERBAIKAN 2: PENCEGAH CRASH ---
-        // Cek jika 'overContainer' (tujuan) adalah kolom yang valid (ada di 'prev')
-        // Ini mencegah error "Cannot read properties of undefined (reading 'orders')"
-        if (!prev[overContainer]) {
-          console.warn(`Drop target tidak valid: ${overContainer}`);
-          return prev; // Batalkan update, jangan lakukan apa-apa
-        }
-        // --- AKHIR PERBAIKAN 2 ---
-
-        const activeItems = prev[activeContainer].orders;
-        const overItems = prev[overContainer].orders;
-
-        const activeIndex = activeItems.findIndex(item => item.id === orderUuid);
-        const [movedItem] = activeItems.splice(activeIndex, 1);
-        
-        movedItem.status = newStatus;
-
-        // Tentukan index baru
-        const overIndex = over.id in prev 
-          ? overItems.length // Jika drop di kolom
-          : overItems.findIndex(item => item.id === over.id); // Jika drop di atas kartu lain
-
-        overItems.splice(overIndex, 0, movedItem);
-        
-        return {
-          ...prev,
-          [activeContainer]: { ...prev[activeContainer], orders: [...activeItems] },
-          [overContainer]: { ...prev[overContainer], orders: [...overItems] },
-        };
+    // 2. Panggil API di backend
+    updateOrderStatus(orderToUpdate.uuid, newStatus)
+      .then(response => {
+        console.log('Update status berhasil:', response.data);
+      })
+      .catch(err => {
+        console.error('Update status GAGAL:', err);
+        setError(`Gagal mengupdate order ${orderToUpdate.uuid}. Coba refresh.`);
+        // TODO: Implement "revert state" jika API gagal
       });
-
-      // --- Kirim pembaruan status ke backend API ---
-      console.log(`Mengirim update: Order ${orderUuid} -> Status ${newStatus}`);
-      
-      updateOrderStatus(orderUuid, newStatus)
-        .then(response => {
-          console.log('Update status berhasil:', response.data);
-        })
-        .catch(err => {
-          console.error('Update status GAGAL:', err);
-          setError(`Gagal mengupdate order ${orderUuid}. Coba refresh.`);
-          // TODO: Implement "revert state" (mengembalikan kartu) jika API gagal
-        });
-    }
   };
 
-  // --- (Sisa kode loading, error, dan render) ---
+  // --- (Sisa kode loading, error) ---
   if (loading) {
     return (
       <div className="p-4 text-center text-gray-500">
@@ -169,18 +115,21 @@ const OrderManagement = () => {
         <h1 className="text-3xl font-bold text-gray-800">Manajemen Pesanan</h1>
         <p className="text-gray-500 mt-1">Kelola pesanan yang masuk dengan menggunakan sistem Kanban</p>
       </header>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8 items-start">
-          {Object.values(columns).map((column) => (
-             <KanbanColumn 
-                key={column.id} 
-                id={column.id}
-                title={column.title} 
-                orders={column.orders}
-             />
-          ))}
-        </div>
-      </DndContext>
+      
+      {/* --- HAPUS Wrapper <DndContext> --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8 items-start">
+        {Object.values(columns).map((column) => (
+           <KanbanColumn 
+              key={column.id} 
+              id={column.id}
+              title={column.title} 
+              orders={column.orders}
+              // --- TAMBAHKAN Prop ini ---
+              onUpdateStatus={handleUpdateStatus}
+           />
+        ))}
+      </div>
+      {/* --- HAPUS Wrapper </DndContext> --- */}
     </div>
   );
 };

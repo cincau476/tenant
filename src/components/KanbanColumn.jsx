@@ -1,11 +1,11 @@
 import React from 'react';
-import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+// HAPUS: impor 'dnd-kit'
 import OrderCard from './OrderCard';
 
-const KanbanColumn = ({ id, title, orders }) => {
-  // `useSortable` di sini membuat kolom itu sendiri menjadi "droppable"
-  const { setNodeRef } = useSortable({ id });
-
+// TAMBAHKAN: 'onUpdateStatus' di props
+const KanbanColumn = ({ id, title, orders, onUpdateStatus }) => {
+  // HAPUS: `useSortable`
+  
   return (
     <div className="bg-gray-50 rounded-xl p-4 flex flex-col min-h-[200px]">
       <div className="flex justify-between items-center mb-4">
@@ -14,19 +14,22 @@ const KanbanColumn = ({ id, title, orders }) => {
           {orders.length}
         </span>
       </div>
-      {/* SortableContext menyediakan konteks untuk item-item di dalamnya (OrderCard).
-        Ini memberitahu dnd-kit bahwa item-item di dalam sini bisa diurutkan/dipindah.
-      */}
-      <SortableContext id={id} items={orders} strategy={verticalListSortingStrategy}>
-        <div ref={setNodeRef} className="flex-grow space-y-4">
-          {orders.map((order) => (
-            <OrderCard key={order.id} order={order} />
-          ))}
-        </div>
-      </SortableContext>
+      
+      {/* HAPUS: Wrapper <SortableContext> */}
+      {/* HAPUS: ref={setNodeRef} */}
+      <div className="flex-grow space-y-4">
+        {orders.map((order) => (
+          <OrderCard 
+            key={order.id} 
+            order={order} 
+            // TAMBAHKAN: Teruskan prop
+            onUpdateStatus={onUpdateStatus} 
+          />
+        ))}
+      </div>
+      {/* HAPUS: Wrapper </SortableContext> */}
     </div>
   );
 };
 
 export default KanbanColumn;
-

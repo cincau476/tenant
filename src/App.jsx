@@ -14,6 +14,8 @@ import MenuManagement from "./pages/MenuManagement";
 import VariantManagement from "./pages/VariantManagement";
 import StandSettings from "./pages/StandSettings";
 import LoginPage from "./pages/LoginPage"; // <-- Impor Halaman Login
+import { checkAuth, logout } from "./api/apiService";
+
 
 const App = () => {
   const [expanded, setExpanded] = useState(true);
@@ -23,12 +25,24 @@ const App = () => {
   // 1. State untuk melacak status login
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  const [authLoading, setAuthLoading] = useState(true);
   // 2. Cek localStorage saat aplikasi pertama kali dimuat
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      setIsAuthenticated(true);
-    }
+    const verifyAuth = async () => {
+      try {
+        // Coba panggil endpoint /auth/user/
+        // Jika sukses (cookie valid), backend akan kirim data user
+        await checkAuth();
+        setIsAuthenticated(true);
+      } catch (err) {
+        // Jika error (401), berarti cookie tidak valid/tidak ada
+        setIsAuthenticated(false);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    verifyAuth();
   }, []);
 
   // 3. Fungsi yang dipanggil oleh LoginPage saat login sukses
@@ -37,10 +51,16 @@ const App = () => {
   };
 
   // 4. Fungsi untuk Logout
-  const handleLogout = () => {
-    localStorage.removeItem('authToken'); // Hapus token
-    setIsAuthenticated(false); // Set status ke logout
-    setActivePage('Overview'); // Reset halaman
+  const handleLogout = async () => {
+    try {
+      await logout(); // Panggil API logout
+    } catch (err) {
+      console.error("Gagal logout:", err);
+    } finally {
+      // HAPUS: localStorage.removeItem('authToken');
+      setIsAuthenticated(false);
+      setActivePage('Overview');
+    }
   };
 
   // --- KONTEN DINAMIS ---
@@ -61,6 +81,14 @@ const App = () => {
         return <Dashboard />;
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        Memverifikasi sesi...
+      </div>
+    );
+  }
   
   // --- PENJAGA HALAMAN (RENDER UTAMA) ---
 

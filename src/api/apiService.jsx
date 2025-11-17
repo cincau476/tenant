@@ -4,34 +4,18 @@ import axios from 'axios';
  * Mengambil token autentikasi dari localStorage.
  * Asumsinya, Anda menyimpan token di sini setelah user login.
  */
-const getAuthToken = () => localStorage.getItem('authToken');
 
 /**
  * Instance Axios utama untuk semua request API
  */
 const apiClient = axios.create({
   // Sesuaikan baseURL ini dengan alamat backend Django Anda
-  baseURL: 'http://localhost:8000/api', 
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 10000,
+  withCredentials: true,
 });
 
-/**
- * Interceptor ini akan "mencegat" setiap request dan menyisipkan
- * header 'Authorization' secara otomatis jika token ada.
- */
-apiClient.interceptors.request.use(
-  config => {
-    const token = getAuthToken();
-    if (token) {
-      // Backend Django REST Framework TokenAuth menggunakan format 'Token <token>'
-      config.headers['Authorization'] = `Token ${token}`;
-    }
-    return config;
-  },
-  error => {
-    return Promise.reject(error);
-  }
-);
+
 
 // --- Kumpulan Fungsi API ---
 
@@ -42,9 +26,14 @@ apiClient.interceptors.request.use(
  * Endpoint: /token-auth/
  */
 export const login = (username, password) => {
-  return apiClient.post('/token-auth/', { username, password });
+  return apiClient.post('/auth/login/', { username, password });
 };
-
+export const logout = () => {
+  return apiClient.post('/auth/logout/');
+};
+export const checkAuth = () => {
+  return apiClient.get('/auth/user/');
+};
 // --- Dashboard / Reports ---
 
 /**
