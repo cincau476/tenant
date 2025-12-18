@@ -1,158 +1,55 @@
-import React, { useState, useEffect } from "react";
-import Sidebar, { SidebarItem } from "./components/Sidebar";
-import {
-  LayoutDashboard,
-  ClipboardList,
-  Package,
-  Sparkles,
-  Settings,
-  LogOut, // <-- (Opsional) Impor ikon logout
-} from "lucide-react";
-import Dashboard from "./pages/Dashboard";
-import OrderManagement from "./pages/OrderManagement";
-import MenuManagement from "./pages/MenuManagement";
-import VariantManagement from "./pages/VariantManagement";
-import StandSettings from "./pages/StandSettings";
-import LoginPage from "./pages/LoginPage"; // <-- Impor Halaman Login
-import { checkAuth, logout } from "./api/apiService";
+import { Routes, Route, useSearchParams, useNavigate, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Sidebar from './components/Sidebar';
+import Dashboard from './pages/Dashboard';
+import MenuManagement from './pages/MenuManagement';
+import OrderManagement from './pages/OrderManagement';
+import VariantManagement from './pages/VariantManagement';
+import StandSettings from './pages/StandSettings';
 
+const ExternalLoginHandler = () => {
+  const [searchParams] = useSearchParams();
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
-const App = () => {
-  const [expanded, setExpanded] = useState(true);
-  const [activePage, setActivePage] = useState("Overview");
-
-  // --- TAMBAHKAN LOGIKA AUTENTIKASI ---
-  // 1. State untuk melacak status login
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  const [authLoading, setAuthLoading] = useState(true);
-  // 2. Cek localStorage saat aplikasi pertama kali dimuat
   useEffect(() => {
-    const verifyAuth = async () => {
-      try {
-        // Coba panggil endpoint /auth/user/
-        // Jika sukses (cookie valid), backend akan kirim data user
-        await checkAuth();
-        setIsAuthenticated(true);
-      } catch (err) {
-        // Jika error (401), berarti cookie tidak valid/tidak ada
-        setIsAuthenticated(false);
-      } finally {
-        setAuthLoading(false);
-      }
-    };
-
-    verifyAuth();
-  }, []);
-
-  // 3. Fungsi yang dipanggil oleh LoginPage saat login sukses
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
-  };
-
-  // 4. Fungsi untuk Logout
-  const handleLogout = async () => {
-    try {
-      await logout(); // Panggil API logout
-    } catch (err) {
-      console.error("Gagal logout:", err);
-    } finally {
-      // HAPUS: localStorage.removeItem('authToken');
-      setIsAuthenticated(false);
-      setActivePage('Overview');
+    const token = searchParams.get('token');
+    if (token) {
+      login(token, { role: 'seller' });
+      navigate('/');
     }
-  };
+  }, [searchParams, login, navigate]);
 
-  // --- KONTEN DINAMIS ---
-  const renderContent = () => {
-    // ... (switch case Anda tidak berubah)
-    switch (activePage) {
-      case "Overview":
-        return <Dashboard />;
-      case "Daftar Pesanan":
-        return <OrderManagement />;
-      case "Manajemen Menu":
-        return <MenuManagement />;
-      case "Manajemen Varian":
-        return <VariantManagement />;
-      case "Pengaturan Stand":
-        return <StandSettings />;
-      default:
-        return <Dashboard />;
-    }
-  };
+  return <div className="h-screen flex items-center justify-center">Authenticating...</div>;
+};
 
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        Memverifikasi sesi...
-      </div>
-    );
-  }
-  
-  // --- PENJAGA HALAMAN (RENDER UTAMA) ---
-
-  // 5. Jika belum terautentikasi, tampilkan halaman Login
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+    window.location.href = 'http://localhost:5173/login';
+    return null;
   }
-
-  // 6. Jika sudah terautentikasi, tampilkan Dashboard
   return (
-    <div className="overflow-x-hidden">
-      <div className="flex">
-        <Sidebar expanded={expanded} setExpanded={setExpanded}>
-          <SidebarItem
-            icon={<LayoutDashboard size={20} />}
-            text="Overview"
-            active={activePage === "Overview"}
-            onClick={() => setActivePage("Overview")}
-          />
-          <SidebarItem
-            icon={<ClipboardList size={20} />}
-            text="Daftar Pesanan"
-            active={activePage === "Daftar Pesanan"}
-            onClick={() => setActivePage("Daftar Pesanan")}
-            alert
-          />
-          <SidebarItem
-            icon={<Package size={20} />}
-            text="Manajemen Menu"
-            active={activePage === "Manajemen Menu"}
-            onClick={() => setActivePage("Manajemen Menu")}
-          />
-          <SidebarItem
-            icon={<Sparkles size={20} />}
-            text="Manajemen Varian"
-            active={activePage === "Manajemen Varian"}
-            onClick={() => setActivePage("Manajemen Varian")}
-          />
-          <SidebarItem
-            icon={<Settings size={20} />}
-            text="Pengaturan Stand"
-            active={activePage === "Pengaturan Stand"}
-            onClick={() => setActivePage("Pengaturan Stand")}
-          />
-          
-          {/* (Opsional) Tambahkan item logout di sidebar */}
-          <hr className="my-3" />
-          <SidebarItem
-            icon={<LogOut size={20} />}
-            text="Logout"
-            onClick={handleLogout} // Panggil fungsi logout
-          />
-
-        </Sidebar>
-        <main
-          className={`flex-1 p-6 transition-all ${
-            expanded ? "ml-72" : "ml-20"
-          }`}
-        >
-          {renderContent()}
-        </main>
-      </div>
+    <div className="flex">
+      <Sidebar />
+      <main className="flex-1 overflow-x-hidden">{children}</main>
     </div>
   );
 };
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <Routes>
+        <Route path="/external-login" element={<ExternalLoginHandler />} />
+        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/menu" element={<ProtectedRoute><MenuManagement /></ProtectedRoute>} />
+        <Route path="/orders" element={<ProtectedRoute><OrderManagement /></ProtectedRoute>} />
+        <Route path="/variants" element={<ProtectedRoute><VariantManagement /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><StandSettings /></ProtectedRoute>} />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </AuthProvider>
+  );
+}

@@ -1,183 +1,115 @@
+// src/api/apiService.jsx
 import axios from 'axios';
-
-/**
- * Mengambil token autentikasi dari localStorage.
- * Asumsinya, Anda menyimpan token di sini setelah user login.
- */
 
 /**
  * Instance Axios utama untuk semua request API
  */
 const apiClient = axios.create({
-  // Sesuaikan baseURL ini dengan alamat backend Django Anda
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  // Pastikan VITE_API_BASE_URL di .env adalah http://localhost:8000/api
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
   timeout: 10000,
   withCredentials: true,
 });
 
-
+/**
+ * Interceptor untuk menyisipkan Token ke setiap request
+ */
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Token ${token}`;
+  }
+  return config;
+});
 
 // --- Kumpulan Fungsi API ---
 
-// --- Auth ---
-
-/**
- * Melakukan login ke backend.
- * Endpoint: /token-auth/
- */
-export const login = (username, password) => {
-  return apiClient.post('/auth/login/', { username, password });
-};
-export const logout = () => {
-  return apiClient.post('/auth/logout/');
-};
-export const checkAuth = () => {
-  return apiClient.get('/auth/user/');
-};
 // --- Dashboard / Reports ---
-
 /**
- * Mengambil data ringkasan dashboard dari backend.
- * Endpoint: reports/summary/
+ * Mengambil data ringkasan dashboard.
+ * Endpoint: /api/reports/summary/
  */
 export const getReportSummary = () => {
   return apiClient.get('/reports/summary/');
 };
 
 // --- Stands (Tenants) ---
+/**
+ * Mengambil daftar stand milik seller yang login.
+ * SESUAI BACKEND: /api/tenants/stands/
+ */
+export const getStands = () => apiClient.get('/tenants/stands/');
 
 /**
- * Mengambil daftar stand.
- * Backend akan otomatis memfilter:
- * - Admin: dapat semua stand
- * - Seller: dapat stand miliknya
- * Endpoint: /stands/
+ * Mengambil detail satu stand.
  */
-export const getStands = () => {
-  return apiClient.get('/stands/');
+export const getStandDetails = (standId) => {
+  return apiClient.get(`/tenants/stands/${standId}/`);
 };
 
-// --- Menus ---
-
+// --- Menu Items ---
 /**
- * Mengambil semua menu untuk stand tertentu.
- * Endpoint: /stands/<standId>/menus/
+ * Mengambil daftar menu untuk stand tertentu.
+ * SESUAI BACKEND: /api/tenants/stands/<id>/menus/
  */
 export const getMenus = (standId) => {
-  return apiClient.get(`/stands/${standId}/menus/`);
+  return apiClient.get(`/tenants/stands/${standId}/menus/`);
 };
 
-/**
- * Mengupdate sebagian data menu item (misal: status 'available').
- * Endpoint: /stands/<standId>/menus/<menuId>/
- * Method: PATCH
- */
+export const createMenu = (standId, data) => {
+  return apiClient.post(`/tenants/stands/${standId}/menus/`, data, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+};
+
 export const updateMenu = (standId, menuId, data) => {
-  // 'data' bisa berupa { "available": false } atau { "price": 26000 }
-  return apiClient.patch(`/stands/${standId}/menus/${menuId}/`, data);
-};
-
-/**
- * Mengupdate data stand (tenant).
- * Endpoint: /stands/<standId>/
- * Method: PATCH (dengan FormData)
- */
-export const updateStand = (standId, formData) => {
-  return apiClient.patch(`/stands/${standId}/`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+  return apiClient.patch(`/tenants/stands/${standId}/menus/${menuId}/`, data, {
+    headers: { 'Content-Type': 'multipart/form-data' }
   });
 };
 
-/**
- * Menghapus menu item.
- * Endpoint: /stands/<standId>/menus/<menuId>/
- * Method: DELETE
- */
 export const deleteMenu = (standId, menuId) => {
-  return apiClient.delete(`/stands/${standId}/menus/${menuId}/`);
+  return apiClient.delete(`/tenants/stands/${standId}/menus/${menuId}/`);
 };
 
-// --- TAMBAHKAN FUNGSI INI ---
-/**
- * Membuat menu item baru (dengan upload gambar).
- * Endpoint: /stands/<standId>/menus/
- * Method: POST
- * Data: FormData
- */
-export const createMenu = (standId, formData) => {
-  return apiClient.post(`/stands/${standId}/menus/`, formData, {
-    headers: {
-      // 'Content-Type': 'multipart/form-data' diatur otomatis oleh browser
-      // saat mengirimkan FormData dengan Axios.
-    },
-  });
-};
-// --- AKHIR TAMBAHAN ---
-
-/**
- * Mengambil semua variant group untuk stand tertentu.
- * Endpoint: /stands/<standId>/variant-groups/
- */
+// --- Variant Groups ---
 export const getVariantGroups = (standId) => {
-  return apiClient.get(`/stands/${standId}/variant-groups/`);
+  return apiClient.get(`/tenants/stands/${standId}/variant-groups/`);
 };
 
-/**
- * Membuat variant group baru.
- * Endpoint: /stands/<standId>/variant-groups/
- */
-export const createVariantGroup = (standId, name) => {
-  return apiClient.post(`/stands/${standId}/variant-groups/`, { name });
+export const createVariantGroup = (standId, data) => {
+  return apiClient.post(`/tenants/stands/${standId}/variant-groups/`, data);
 };
 
-/**
- * Menghapus variant group.
- * Endpoint: /stands/<standId>/variant-groups/<groupId>/
- */
 export const deleteVariantGroup = (standId, groupId) => {
-  return apiClient.delete(`/stands/${standId}/variant-groups/${groupId}/`);
+  return apiClient.delete(`/tenants/stands/${standId}/variant-groups/${groupId}/`);
 };
 
 // --- Variant Options ---
-
-/**
- * Membuat variant option baru di dalam group.
- * Endpoint: /stands/<standId>/variant-groups/<groupId>/options/
- */
 export const createVariantOption = (standId, groupId, data) => {
-  // data = { name: "...", price: "..." }
-  return apiClient.post(`/stands/${standId}/variant-groups/${groupId}/options/`, data);
+  return apiClient.post(`/tenants/stands/${standId}/variant-groups/${groupId}/options/`, data);
 };
 
-/**
- * Menghapus variant option.
- * Endpoint: /stands/<standId>/variant-groups/<groupId>/options/<optionId>/
- */
 export const deleteVariantOption = (standId, groupId, optionId) => {
-  return apiClient.delete(`/stands/${standId}/variant-groups/${groupId}/options/${optionId}/`);
+  return apiClient.delete(`/tenants/stands/${standId}/variant-groups/${groupId}/options/${optionId}/`);
 };
-// --- Orders ---
 
+// --- Orders ---
 /**
- * Mengambil semua pesanan yang relevan untuk user yang login.
- * (Backend akan otomatis memfilter berdasarkan tenant jika user adalah Seller)
- * Endpoint: /orders/all/
+ * Mengambil semua pesanan untuk tenant terkait.
+ * SESUAI BACKEND: /api/orders/all/
  */
 export const getOrders = () => {
-  return apiClient.get('/all/');
+  return apiClient.get('/orders/all/'); 
 };
 
-/**
- * Mengupdate status sebuah order.
- * Endpoint: /orders/<uuid>/update-status/
- * Method: PATCH
- */
-export const updateOrderStatus = (orderUuid, newStatus) => {
-  // Backend UpdateOrderStatusView mengharapkan 'PATCH'
-  // dengan body: { "status": "NAMA_STATUS_BARU" }
-  return apiClient.patch(`${orderUuid}/update-status/`, {
-    status: newStatus,
-  });
+// Fungsi ini akan memanggil http://localhost:8000/api/orders/<uuid>/status/
+export const updateOrderStatus = (uuid, status) => {
+  return apiClient.patch(`/orders/${uuid}/status/`, { status });
 };
+
+export const updateStand = (id, data) => apiClient.patch(`/tenants/stands/${id}/`, data, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+});
+
+export default apiClient;
