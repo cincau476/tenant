@@ -1,33 +1,46 @@
 import React from 'react';
-// HAPUS: impor 'dnd-kit'
 import OrderCard from './OrderCard';
 
-// TAMBAHKAN: 'onUpdateStatus' di props
+// Terima prop 'onUpdateStatus'
 const KanbanColumn = ({ id, title, orders, onUpdateStatus }) => {
-  // HAPUS: `useSortable`
-  
+  // Tentukan warna header berdasarkan status (Opsional, biar cantik)
+  const getHeaderColor = () => {
+    switch (id) {
+      case 'PAID': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'PROCESSING': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'READY': return 'bg-green-100 text-green-800 border-green-200';
+      case 'COMPLETED': return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-gray-50 text-gray-600';
+    }
+  };
+
   return (
-    <div className="bg-gray-50 rounded-xl p-4 flex flex-col min-h-[200px]">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold text-gray-700">{title}</h3>
-        <span className="bg-blue-100 text-blue-600 text-xs font-bold px-2 py-1 rounded-full">
+    <div className="flex flex-col h-full bg-gray-50 rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      {/* Header Kolom */}
+      <div className={`p-4 border-b font-bold flex justify-between items-center ${getHeaderColor()}`}>
+        <h2>{title}</h2>
+        <span className="bg-white px-2 py-0.5 rounded-full text-xs font-extrabold shadow-sm bg-opacity-60">
           {orders.length}
         </span>
       </div>
-      
-      {/* HAPUS: Wrapper <SortableContext> */}
-      {/* HAPUS: ref={setNodeRef} */}
-      <div className="flex-grow space-y-4">
-        {orders.map((order) => (
-          <OrderCard 
-            key={order.id} 
-            order={order} 
-            // TAMBAHKAN: Teruskan prop
-            onUpdateStatus={onUpdateStatus} 
-          />
-        ))}
+
+      {/* Area Kartu */}
+      <div className="p-3 flex-1 overflow-y-auto space-y-3 min-h-[500px]">
+        {orders.length === 0 ? (
+           <div className="text-center text-gray-400 py-10 text-sm italic">
+             Belum ada pesanan
+           </div>
+        ) : (
+          orders.map((order) => (
+            <OrderCard 
+              key={order.id} 
+              order={order} 
+              // TERUSKAN props ini ke OrderCard
+              onUpdateStatus={onUpdateStatus} 
+            />
+          ))
+        )}
       </div>
-      {/* HAPUS: Wrapper </SortableContext> */}
     </div>
   );
 };

@@ -1,8 +1,7 @@
 import React from 'react';
-// HAPUS: impor 'dnd-kit'
 import { Clock } from 'lucide-react';
 
-// Helper timeAgo (tidak berubah)
+// Helper timeAgo
 const timeAgo = (dateStr) => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
@@ -18,91 +17,101 @@ const timeAgo = (dateStr) => {
   const diffDays = Math.round(diffHours / 24);
   return `${diffDays} hari lalu`;
 };
-// --- AKHIR TAMBAHAN ---
 
-
-// TAMBAHKAN: 'onUpdateStatus' di props
 const OrderCard = ({ order, onUpdateStatus }) => {
-  // HAPUS: Hook 'useSortable'
-  // HAPUS: const style = { ... }
-
-  // Fungsi getButtonAction (tidak berubah)
+  
   const getButtonAction = (status) => {
     switch (status) {
       case 'PAID':
         return { text: 'Proses Pesanan', class: 'bg-blue-600 hover:bg-blue-700' };
       case 'PROCESSING':
-        return { text: 'Tandai Siap', class: 'bg-blue-600 hover:bg-blue-700' };
+        return { text: 'Tandai Siap', class: 'bg-yellow-500 hover:bg-yellow-600' };
       case 'READY':
-        return { text: 'Selesaikan', class: 'bg-gray-300 hover:bg-gray-400 text-gray-800' };
+        return { text: 'Selesaikan', class: 'bg-green-600 hover:bg-green-700' };
       default:
         return null;
     }
   };
   
   const actionButton = getButtonAction(order.status);
-  
-  // Logika isDineIn (tidak berubah)
   const isDineIn = order.order_type === 'DINE_IN';
   
-  // --- TAMBAHKAN: Map untuk status berikutnya ---
+  // Status berikutnya
   const NEXT_STATUS = {
     'PAID': 'PROCESSING',
     'PROCESSING': 'READY',
     'READY': 'COMPLETED'
   };
 
-  // --- TAMBAHKAN: Handler untuk klik tombol ---
-  const handleActionClick = () => {
+  const handleActionClick = (e) => {
+    e.stopPropagation(); // Mencegah event bubbling jika ada
     const nextStatus = NEXT_STATUS[order.status];
     if (nextStatus && onUpdateStatus) {
-      // Kirim order dan status baru ke parent (OrderManagement.jsx)
       onUpdateStatus(order, nextStatus);
     }
   };
 
   return (
-    <div
-      // HAPUS: ref, style, attributes, listeners
-      className={`bg-white rounded-lg p-4 shadow-sm border border-gray-200`}
-    >
-        <div className="flex justify-between items-start">
+    <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 mb-3 hover:shadow-md transition-shadow">
+        {/* Header Kartu */}
+        <div className="flex justify-between items-start mb-3">
             <div>
-              <p className="font-bold text-gray-800">{order.references_code}</p>
+              <p className="font-bold text-gray-800 text-sm">{order.references_code}</p>
               <div className="flex items-center text-xs text-gray-500 mt-1">
                 <Clock size={12} className="mr-1.5" />
                 <span>{timeAgo(order.created_at)}</span>
               </div>
             </div>
-            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${isDineIn ? 'bg-indigo-100 text-indigo-600' : 'bg-green-100 text-green-600'}`}>
-              {isDineIn ? 'Dine-In' : 'Takeaway'}
-            </span>
-          </div>
+            <div className="flex flex-col items-end gap-1">
+               <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded-full ${isDineIn ? 'bg-indigo-100 text-indigo-600' : 'bg-green-100 text-green-600'}`}>
+                 {isDineIn ? 'Dine-In' : 'Takeaway'}
+               </span>
+               <span className="text-xs font-bold text-gray-800">{order.customer_name || 'Pelanggan'}</span>
+            </div>
+        </div>
           
-          <div className="mt-4 border-t pt-3">
-            {order.items.map((item) => (
-              <div key={item.id} className="flex justify-between items-center text-sm text-gray-600 mb-1">
-                <span>{item.menu_item.name} <span className="text-gray-400">x{item.qty}</span></span>
-                <span className="font-medium">Rp {(item.price).toLocaleString('id-ID')}</span>
+        {/* List Item */}
+        <div className="border-t border-dashed pt-2 space-y-1">
+            {order.items.map((item, index) => (
+              <div key={item.id || index} className="flex justify-between items-start text-sm text-gray-600">
+                <div className="flex-1 pr-2">
+                    {/* PERBAIKAN UTAMA: Pastikan mengakses .name */}
+                    <span className="font-medium text-gray-800">
+                      {item.menu_item?.name || item.menu_item_name || 'Item dihapus'}
+                    </span> 
+                    {/* Tampilkan varian jika ada (opsional) */}
+                    {item.variant_info && (
+                      <div className="text-xs text-gray-400 italic">
+                        {item.variant_info}
+                      </div>
+                    )}
+                    {item.note && (
+                       <div className="text-[10px] text-red-400">Catatan: {item.note}</div>
+                    )}
+                </div>
+                <div className="text-right whitespace-nowrap">
+                   <span className="text-gray-500 text-xs mr-1">x{item.qty}</span>
+                </div>
               </div>
             ))}
-          </div>
+        </div>
 
-          <div className="flex justify-between items-center mt-3 border-t pt-3">
-            <span className="font-semibold text-gray-800">Total</span>
-            <span className="font-bold text-lg text-gray-900">Rp {order.total.toLocaleString('id-ID')}</span>
-          </div>
+        {/* Total & Action */}
+        <div className="mt-3 pt-2 border-t flex justify-between items-center">
+            <div className="text-xs text-gray-500">Total</div>
+            <div className="font-bold text-gray-900">
+              Rp {parseFloat(order.total).toLocaleString('id-ID')}
+            </div>
+        </div>
 
-          {/* --- UPDATE Tombol --- */}
-          {actionButton && (
+        {actionButton && (
              <button 
-              // TAMBAHKAN: onClick handler
               onClick={handleActionClick}
-              className={`w-full mt-4 text-white font-semibold py-2 rounded-lg transition-colors duration-200 ${actionButton.class}`}
+              className={`w-full mt-3 text-white text-sm font-semibold py-2 rounded shadow-sm transition-colors duration-200 ${actionButton.class}`}
             >
                 {actionButton.text}
              </button>
-          )}
+        )}
     </div>
   );
 };
