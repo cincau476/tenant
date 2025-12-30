@@ -33,78 +33,65 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-gray-900 items-center justify-center">
+      <div className="flex h-[60vh] items-center justify-center">
         <FiLoader className="w-10 h-10 text-orange-500 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-gray-900 text-white overflow-x-hidden">
-      {/* Sidebar menangani navigasi desktop dan mobile */}
-      <Sidebar />
-
-      <main className="flex-1 lg:ml-64 w-full transition-all duration-300">
-        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-          
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <div>
-              <h1 className="text-2xl font-bold">Dashboard Tenant</h1>
-              <p className="text-gray-400 text-sm">Pantau performa kantin Anda hari ini.</p>
-            </div>
-            <div className="text-xs bg-gray-800 px-3 py-1 rounded-full text-orange-400 border border-orange-500/20">
-              Live Update
-            </div>
-          </div>
-
-          {/* Grid Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Mengirim referensi komponen ikon, bukan elemen JSX */}
-            <StatCard 
-              title="Pendapatan" 
-              value={`Rp ${stats?.main_stats?.total_revenue?.toLocaleString() || '0'}`} 
-              icon={FiDollarSign} 
-              color="text-green-500"
-            />
-            <StatCard 
-              title="Total Pesanan" 
-              value={stats?.stats_today?.total || '0'} 
-              icon={FiShoppingBag} 
-              color="text-blue-500"
-            />
-            <StatCard 
-              title="Pelanggan Aktif" 
-              value={stats?.main_stats?.active_customers || '0'} 
-              icon={FiUsers} 
-              color="text-purple-500"
-            />
-            <StatCard 
-              title="Selesai" 
-              value={stats?.stats_today?.completed || '0'} 
-              icon={FiCheckCircle} 
-              color="text-orange-500"
-            />
-          </div>
-
-          {/* Charts & Top Products Section */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-gray-700 overflow-x-auto">
-              <h3 className="text-lg font-semibold mb-4">Grafik Penjualan Per Jam</h3>
-              <div className="min-w-[300px]">
-                <SalesChart data={stats?.sales_by_hour} />
-              </div>
-            </div>
-
-            <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-gray-700">
-              <h3 className="text-lg font-semibold mb-4 text-white">5 Menu Terlaris</h3>
-              {/* Sinkronisasi nama prop menjadi productsData sesuai TopProducts.jsx */}
-              <TopProducts productsData={stats?.top_selling_products} />
-            </div>
-          </div>
-
-          <div className="h-20 lg:hidden"></div>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Selamat Datang!</h2>
+          <p className="text-gray-500 text-sm">Pantau performa kantin Anda hari ini.</p>
         </div>
-      </main>
+        <div className="text-xs bg-orange-100 px-3 py-1 rounded-full text-orange-600 border border-orange-200 font-medium">
+          Live Update
+        </div>
+      </div>
+
+      {/* Grid Stat Cards - Sekarang menggunakan background putih */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard 
+          title="Pendapatan" 
+          value={`Rp ${stats?.main_stats?.total_revenue?.toLocaleString() || '0'}`} 
+          icon={FiDollarSign} 
+          color="text-emerald-600"
+        />
+        <StatCard 
+          title="Total Pesanan" 
+          value={stats?.stats_today?.total || '0'} 
+          icon={FiShoppingBag} 
+          color="text-blue-600"
+        />
+        <StatCard 
+          title="Pelanggan" 
+          value={stats?.main_stats?.active_customers || '0'} 
+          icon={FiUsers} 
+          color="text-purple-600"
+        />
+        <StatCard 
+          title="Selesai" 
+          value={stats?.stats_today?.completed || '0'} 
+          icon={FiCheckCircle} 
+          color="text-orange-600"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+          <h3 className="text-lg font-semibold mb-4 text-gray-800">Grafik Penjualan</h3>
+          <div className="min-w-[300px]">
+            <SalesChart data={stats?.sales_by_hour} />
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <h3 className="text-lg font-semibold mb-4 text-gray-800">5 Menu Terlaris</h3>
+          <TopProducts productsData={stats?.top_selling_products} />
+        </div>
+      </div>
     </div>
   );
 }
