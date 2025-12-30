@@ -6,7 +6,7 @@ import axios from 'axios';
  */
 const apiClient = axios.create({
   // Pastikan VITE_API_BASE_URL di .env adalah http://localhost:8000/api
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.10:8000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL ,
   timeout: 10000,
   withCredentials: true,
 });
