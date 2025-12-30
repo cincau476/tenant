@@ -9,6 +9,23 @@ import OrderManagement from './pages/OrderManagement';
 import VariantManagement from './pages/VariantManagement';
 import StandSettings from './pages/StandSettings';
 
+// Komponen ini harus ada untuk menangani login dari luar
+const ExternalLoginHandler = () => {
+  const [searchParams] = useSearchParams();
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = searchParams.get('token');
+    if (token) {
+      login(token, { role: 'seller' });
+      navigate('/');
+    }
+  }, [searchParams, login, navigate]);
+
+  return <div className="h-screen flex items-center justify-center bg-white text-gray-800">Authenticating...</div>;
+};
+
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
@@ -32,21 +49,21 @@ const ProtectedRoute = ({ children }) => {
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
+      {/* Sidebar mengirim status collapsed ke main content */}
       <Sidebar onToggle={(collapsed) => setIsSidebarCollapsed(collapsed)} />
       
+      {/* Margin dinamis: ml-20 saat sidebar kecil, ml-64 saat lebar */}
       <main className={`flex-1 transition-all duration-300 min-h-screen ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
         <header className="sticky top-0 z-30 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm">
           <h1 className="text-lg font-bold text-gray-800 uppercase tracking-wide">
             {getPageTitle(location.pathname)}
           </h1>
-          
-          {/* Ikon akun telah dihapus sesuai permintaan */}
           <div className="flex items-center gap-3">
              <span className="text-xs font-bold text-orange-600 uppercase tracking-widest hidden sm:inline">Online</span>
           </div>
         </header>
         
-        <div className="p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8">
+        <div className="p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 text-gray-900">
           {children}
         </div>
       </main>
