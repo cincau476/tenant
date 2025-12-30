@@ -4,9 +4,10 @@ import axios from 'axios';
 /**
  * Instance Axios utama untuk semua request API
  */
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 const apiClient = axios.create({
-  // Pastikan VITE_API_BASE_URL di .env adalah http://localhost:8000/api
-  baseURL: import.meta.env.VITE_API_BASE_URL ,
+  baseURL: BASE_URL, 
   timeout: 10000,
   withCredentials: true,
 });
