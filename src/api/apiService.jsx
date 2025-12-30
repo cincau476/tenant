@@ -34,6 +34,10 @@ export const getReportSummary = () => {
   return apiClient.get('/reports/summary/');
 };
 
+export const getDashboardStats = () => {
+  return apiClient.get('/reports/summary/');
+};
+
 // --- Stands (Tenants) ---
 /**
  * Mengambil daftar stand milik seller yang login.
