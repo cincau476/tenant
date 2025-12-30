@@ -41,14 +41,11 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-gray-900 text-white overflow-x-hidden">
-      {/* Sidebar - Akan otomatis jadi Bottom Nav di HP/iPad karena logic Sidebar.jsx kita */}
       <Sidebar />
 
-      {/* Main Content */}
       <main className="flex-1 lg:ml-64 w-full transition-all duration-300">
         <div className="p-4 sm:p-6 lg:p-8 space-y-6">
           
-          {/* Header Section */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div>
               <h1 className="text-2xl font-bold">Dashboard Tenant</h1>
@@ -59,55 +56,43 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Grid Stat Cards */}
-          {/* Implementasi Responsif: 1 kolom (HP), 2 kolom (iPad), 4 kolom (Desktop) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* PERBAIKAN: Kirim referensi komponen, bukan elemen JSX */}
             <StatCard 
               title="Pendapatan" 
-              icon={FiDollarSign} // Kirim referensi komponen
-              color="text-green-500"
               value={`Rp ${stats?.main_stats?.total_revenue?.toLocaleString() || '0'}`} 
+              icon={FiDollarSign} 
+              color="text-green-500"
             />
             <StatCard 
               title="Total Pesanan" 
               value={stats?.stats_today?.total || '0'} 
-              icon={<FiShoppingBag />} 
+              icon={FiShoppingBag} 
               color="text-blue-500"
             />
             <StatCard 
               title="Pelanggan Aktif" 
               value={stats?.main_stats?.active_customers || '0'} 
-              icon={<FiUsers />} 
+              icon={FiUsers} 
               color="text-purple-500"
             />
             <StatCard 
               title="Selesai" 
               value={stats?.stats_today?.completed || '0'} 
-              icon={<FiCheckCircle />} 
+              icon={FiCheckCircle} 
               color="text-orange-500"
             />
           </div>
 
-          {/* Charts Section */}
-          {/* Implementasi Responsif: Tumpuk vertikal di HP, samping-sampingan di iPad Pro/Desktop (xl) */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-gray-700 overflow-x-auto">
               <h3 className="text-lg font-semibold mb-4">Grafik Penjualan Per Jam</h3>
-              <div className="min-w-[300px]"> {/* Menjamin chart tidak gepeng di HP */}
+              <div className="min-w-[300px]">
                 <SalesChart data={stats?.sales_by_hour} />
               </div>
             </div>
 
             <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-gray-700">
+              {/* PERBAIKAN: Gunakan prop productsData agar sesuai dengan komponen TopProducts.jsx */}
               <h3 className="text-lg font-semibold mb-4">5 Menu Terlaris</h3>
-              <TopProducts productsData={stats?.top_selling_products} />
-            </div>
-          </div>
-
-          {/* Tambahan Spacer untuk Mobile agar tidak tertutup Bottom Nav */}
-          <div className="h-20 lg:hidden"></div>
-        </div>
-      </main>
-    </div>
-  );
-}
+              <TopProducts productsData={stats?.top
