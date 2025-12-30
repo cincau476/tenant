@@ -16,7 +16,8 @@ const apiClient = axios.create({
  * Interceptor untuk menyisipkan Token ke setiap request
  */
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  localStorage.setItem('tenant_token', token);
+  const token = localStorage.getItem('tenant_token');
   if (token) {
     config.headers.Authorization = `Token ${token}`;
   }
