@@ -16,12 +16,16 @@ const apiClient = axios.create({
  * Interceptor untuk menyisipkan Token ke setiap request
  */
 apiClient.interceptors.request.use((config) => {
-  localStorage.setItem('tenant_token', token);
+  // Ambil token yang sudah ada di storage
   const token = localStorage.getItem('tenant_token');
+  
   if (token) {
+    // Gunakan format 'Token' (dengan T kapital) sesuai standar Django Authtoken
     config.headers.Authorization = `Token ${token}`;
   }
   return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
 // --- Kumpulan Fungsi API ---
