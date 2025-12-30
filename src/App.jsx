@@ -24,10 +24,11 @@ const ExternalLoginHandler = () => {
   return <div className="h-screen flex items-center justify-center">Authenticating...</div>;
 };
 
-const ProtectedRoute = ({ children }) => {
+onst ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
-    window.location.href = 'http://localhost:5173/login';
+    // Arahkan ke domain produksi
+    window.location.href = 'https://www.kantinku.com/login';
     return null;
   }
   return (
