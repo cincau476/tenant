@@ -12,9 +12,15 @@ import {
   FiChevronRight
 } from 'react-icons/fi';
 
-export default function Sidebar() {
+export default function Sidebar({ onToggle }) {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const toggleSidebar = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    if (onToggle) onToggle(newState); // Mengirim status ke App.jsx
+  };
 
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: <FiHome /> },
@@ -28,20 +34,19 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* --- DESKTOP SIDEBAR --- */}
       <aside className={`hidden lg:flex flex-col bg-white h-screen fixed left-0 top-0 border-r border-gray-200 z-50 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
         <div className={`p-6 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!isCollapsed && (
             <div>
               <h2 className="text-xl font-bold text-orange-600 tracking-tight">Kantinku</h2>
-              <p className="text-[10px] text-gray-400 uppercase">Tenant Panel</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest">Tenant Panel</p>
             </div>
           )}
           <button 
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={toggleSidebar}
             className="p-2 rounded-lg bg-gray-50 hover:bg-orange-50 text-gray-500 hover:text-orange-600 transition-colors"
           >
-            {isCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
+            {isCollapsed ? <FiChevronRight size={20} /> : <FiChevronLeft size={20} />}
           </button>
         </div>
 
@@ -50,7 +55,6 @@ export default function Sidebar() {
             <Link
               key={item.name}
               to={item.path}
-              title={isCollapsed ? item.name : ""}
               className={`flex items-center gap-3 py-3 rounded-xl transition-all duration-200 ${
                 isCollapsed ? 'justify-center px-0' : 'px-4'
               } ${
@@ -73,16 +77,10 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* --- MOBILE BOTTOM NAV --- */}
+      {/* Mobile Nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-1 z-[100] flex justify-around items-center shadow-lg pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
         {menuItems.map((item) => (
-          <Link
-            key={item.name}
-            to={item.path}
-            className={`flex flex-col items-center justify-center py-2 px-1 min-w-[64px] ${
-              isActive(item.path) ? 'text-orange-600' : 'text-gray-400'
-            }`}
-          >
+          <Link key={item.name} to={item.path} className={`flex flex-col items-center py-2 px-1 min-w-[64px] ${isActive(item.path) ? 'text-orange-600' : 'text-gray-400'}`}>
             <span className="text-2xl mb-1">{item.icon}</span>
             <span className="text-[10px] font-medium">{item.name}</span>
           </Link>
