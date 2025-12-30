@@ -1,9 +1,6 @@
 // src/api/apiService.jsx
 import axios from 'axios';
 
-/**
- * Instance Axios utama untuk semua request API
- */
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const apiClient = axios.create({
@@ -13,14 +10,13 @@ const apiClient = axios.create({
 });
 
 /**
- * Interceptor untuk menyisipkan Token ke setiap request
+ * Interceptor untuk menyisipkan tenant_token
  */
 apiClient.interceptors.request.use((config) => {
-  // Ambil token yang sudah ada di storage
+  // MENGGUNAKAN tenant_token AGAR TIDAK BENTROK DENGAN ADMIN
   const token = localStorage.getItem('tenant_token');
   
   if (token) {
-    // Gunakan format 'Token' (dengan T kapital) sesuai standar Django Authtoken
     config.headers.Authorization = `Token ${token}`;
   }
   return config;
