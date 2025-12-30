@@ -64,9 +64,9 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard 
               title="Pendapatan" 
-              value={`Rp ${stats?.main_stats?.total_revenue?.toLocaleString() || '0'}`} 
-              icon={<FiDollarSign />} 
+              icon={FiDollarSign} // Kirim referensi komponen
               color="text-green-500"
+              value={`Rp ${stats?.main_stats?.total_revenue?.toLocaleString() || '0'}`} 
             />
             <StatCard 
               title="Total Pesanan" 
