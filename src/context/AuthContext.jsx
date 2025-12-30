@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
     // Jika sedang di lokal, pakai localhost. Jika di VM, pakai domain kantinku.com
     return window.location.hostname === 'localhost' 
       ? 'http://localhost:5173/login' 
-      : 'https://kantinku.com/login';
+      : 'https://www.kantinku.com/login';
   };
 
   const login = useCallback((newToken, userData) => {
