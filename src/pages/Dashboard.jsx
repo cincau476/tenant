@@ -100,7 +100,7 @@ export default function Dashboard() {
 
             <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-gray-700">
               <h3 className="text-lg font-semibold mb-4">5 Menu Terlaris</h3>
-              <TopProducts products={stats?.top_selling_products} />
+              <TopProducts productsData={stats?.top_selling_products} />
             </div>
           </div>
 
