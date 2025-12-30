@@ -19,7 +19,12 @@ export default function Sidebar({ onToggle }) {
   const toggleSidebar = () => {
     const newState = !isCollapsed;
     setIsCollapsed(newState);
-    if (onToggle) onToggle(newState); // Mengirim status ke App.jsx
+    if (onToggle) onToggle(newState);
+  };
+
+  const handleLogout = () => {
+    // Mengarahkan ke domain produksi sesuai logika di App.jsx
+    window.location.href = 'https://www.kantinku.com/login';
   };
 
   const menuItems = [
@@ -70,21 +75,32 @@ export default function Sidebar({ onToggle }) {
         </nav>
 
         <div className="p-4 border-t border-gray-100">
-          <button className={`flex items-center gap-3 py-3 w-full text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all ${isCollapsed ? 'justify-center' : 'px-4'}`}>
+          <button 
+            onClick={handleLogout}
+            className={`flex items-center gap-3 py-3 w-full text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all ${isCollapsed ? 'justify-center' : 'px-4'}`}
+          >
             <FiLogOut className="text-xl" />
             {!isCollapsed && <span className="font-medium">Keluar</span>}
           </button>
         </div>
       </aside>
 
-      {/* Mobile Nav */}
+      {/* Mobile Bottom Nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-1 z-[100] flex justify-around items-center shadow-lg pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
         {menuItems.map((item) => (
-          <Link key={item.name} to={item.path} className={`flex flex-col items-center py-2 px-1 min-w-[64px] ${isActive(item.path) ? 'text-orange-600' : 'text-gray-400'}`}>
+          <Link key={item.name} to={item.path} className={`flex flex-col items-center justify-center py-2 px-1 min-w-[64px] ${isActive(item.path) ? 'text-orange-600' : 'text-gray-400'}`}>
             <span className="text-2xl mb-1">{item.icon}</span>
             <span className="text-[10px] font-medium">{item.name}</span>
           </Link>
         ))}
+        {/* Tombol Logout Mobile */}
+        <button 
+          onClick={handleLogout}
+          className="flex flex-col items-center justify-center py-2 px-1 min-w-[64px] text-gray-400 hover:text-red-500"
+        >
+          <FiLogOut className="text-2xl mb-1" />
+          <span className="text-[10px] font-medium">Keluar</span>
+        </button>
       </nav>
     </>
   );
