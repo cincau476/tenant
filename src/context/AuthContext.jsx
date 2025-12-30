@@ -10,21 +10,29 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(initialToken);
   const [user, setUser] = useState(initialUser);
 
-  // GUNAKAN useCallback DI SINI
+  // Fungsi helper untuk menentukan URL Login secara dinamis
+  const getLoginUrl = () => {
+    // Jika sedang di lokal, pakai localhost. Jika di VM, pakai domain kantinku.com
+    return window.location.hostname === 'localhost' 
+      ? 'http://localhost:5173/login' 
+      : 'https://kantinku.com/login';
+  };
+
   const login = useCallback((newToken, userData) => {
     localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(userData));
     setToken(newToken);
     setUser(userData);
-  }, []); // Dependency array kosong = fungsi stabil
+  }, []); 
 
-  // GUNAKAN useCallback JUGA DI SINI
   const logout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
-    window.location.href = 'http://localhost:5173/login'; // Redirect ke portal User
+    
+    // REDIRECT DINAMIS: Mengganti http://localhost:5173/login yang lama
+    window.location.href = getLoginUrl(); 
   }, []);
 
   return (
