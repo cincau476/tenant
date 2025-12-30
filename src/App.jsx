@@ -24,7 +24,7 @@ const ExternalLoginHandler = () => {
   return <div className="h-screen flex items-center justify-center">Authenticating...</div>;
 };
 
-onst ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
     // Arahkan ke domain produksi
