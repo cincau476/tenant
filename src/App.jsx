@@ -1,4 +1,5 @@
-import { Routes, Route, useSearchParams, useNavigate, Navigate } from 'react-router-dom';
+// src/App.jsx
+import { Routes, Route, useSearchParams, useNavigate, Navigate, useLocation } from 'react-router-dom'; // Tambahkan useLocation di sini
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Sidebar from './components/Sidebar';
@@ -26,9 +27,9 @@ const ExternalLoginHandler = () => {
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
-  const location = useLocation();
+  const location = useLocation(); // Hook ini sekarang sudah terdefinisi karena sudah diimpor
 
-  // Mapping nama halaman untuk Header
+  // Mapping nama halaman untuk Header (sesuai permintaan desain sebelumnya)
   const getPageTitle = (path) => {
     switch(path) {
       case '/': return 'Dashboard';
@@ -46,11 +47,10 @@ const ProtectedRoute = ({ children }) => {
   }
 
   return (
-    <div className="flex bg-gray-50 min-h-screen">
+    <div className="flex bg-gray-50 min-h-screen text-gray-900">
       <Sidebar />
-      {/* Layout responsif terhadap sidebar desktop */}
-      <main className="flex-1 lg:ml-64 transition-all duration-300">
-        {/* KOTAK PUTIH PANJANG (HEADER) */}
+      <main className="flex-1 lg:ml-64 transition-all duration-300 min-h-screen">
+        {/* Header Putih sesuai permintaan */}
         <header className="sticky top-0 z-30 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm">
           <h1 className="text-lg font-bold text-gray-800 uppercase tracking-wide">
             {getPageTitle(location.pathname)}
@@ -63,7 +63,6 @@ const ProtectedRoute = ({ children }) => {
           </div>
         </header>
         
-        {/* Konten Halaman */}
         <div className="p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8">
           {children}
         </div>
