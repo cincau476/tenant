@@ -14,13 +14,13 @@ export default function TopProducts({ productsData }) {
           className="group flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-orange-50/50 to-transparent border border-orange-100 hover:border-orange-300 transition-all duration-300"
         >
           <div className="flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shadow-lg rotate-3 group-hover:rotate-0 transition-transform ${
-              index === 0 ? 'bg-orange-500' : index === 1 ? 'bg-amber-500' : 'bg-slate-400'
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shadow-lg ${
+              index === 0 ? 'bg-orange-500 rotate-3' : index === 1 ? 'bg-amber-500 -rotate-3' : 'bg-slate-400'
             }`}>
               {index + 1}
             </div>
             <div>
-              <h4 className="font-bold text-gray-800 group-hover:text-orange-700 transition-colors">{product.name}</h4>
+              <h4 className="font-bold text-gray-800">{product.name}</h4>
               <p className="text-xs text-gray-500 font-medium">{product.category_name}</p>
             </div>
           </div>
