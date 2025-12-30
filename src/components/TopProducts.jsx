@@ -1,47 +1,39 @@
+// src/components/StatCard.jsx
 import React from 'react';
+import { ArrowUp, ArrowDown } from 'lucide-react';
 
-/**
- * Komponen ini menggantikan RecentOrders untuk menampilkan
- * data 'top_selling_products' yang disediakan oleh API /reports/summary/.
- */
-const TopProducts = ({ productsData }) => {
+// StatCard menerima Icon sebagai referensi komponen (misal: FiDollarSign)
+const StatCard = ({ title, value, change, changeType = 'neutral', icon: Icon, color }) => {
+  const changeColor = {
+    increase: 'text-green-500 bg-green-100',
+    decrease: 'text-red-500 bg-red-100',
+    neutral: 'text-gray-500 bg-gray-100',
+  };
+
+  const ChangeIcon = changeType === 'increase' ? ArrowUp : ArrowDown;
+
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm">
-      <h3 className="text-lg font-semibold text-gray-800">Produk Terlaris</h3>
-      <p className="text-sm text-gray-500">Daftar produk yang paling banyak terjual hari ini</p>
-      <div className="mt-4 space-y-4">
-        
-        {/* Tampilkan pesan jika tidak ada data */}
-        {(!productsData || productsData.length === 0) ? (
-          <p className="text-gray-500 text-center py-4">Belum ada data penjualan.</p>
-        ) : (
-          productsData.map((product, index) => (
-            <div key={index} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center font-bold text-blue-600">
-                      #{index + 1}
-                  </div>
-                  <div className="ml-4">
-                      {/* API mengembalikan 'menu_item__name' */}
-                      <p className="font-semibold text-gray-800">{product.menu_item__name}</p>
-                      {/* API mengembalikan 'total_sold' */}
-                      <p className="text-sm text-gray-500">Terjual: {product.total_sold} porsi</p>
-                  </div>
-              </div>
-              <div className="text-right">
-                  {/* API mengembalikan 'total_revenue' */}
-                  <p className="font-semibold text-gray-800">
-                    Rp {Number(product.total_revenue).toLocaleString('id-ID')}
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">Total Pendapatan</p>
-              </div>
-            </div>
-          ))
+    <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 flex flex-col justify-between">
+      <div className="flex justify-between items-start">
+        <h3 className="text-sm font-medium text-gray-400">{title}</h3>
+        {/* Render Icon sebagai komponen */}
+        <div className={`bg-gray-700 p-2 rounded-lg ${color}`}>
+          <Icon size={20} />
+        </div>
+      </div>
+      <div className="mt-4">
+        <p className="text-2xl font-bold text-white">{value}</p>
+        {change && (
+          <div className={`text-xs mt-1 flex items-center`}>
+            <span className={`flex items-center px-2 py-0.5 rounded-full font-semibold ${changeColor[changeType]}`}>
+               {changeType !== 'neutral' && <ChangeIcon size={12} className="mr-1" />}
+              {change}
+            </span>
+          </div>
         )}
-
       </div>
     </div>
   );
 };
 
-export default TopProducts;
+export default StatCard;
