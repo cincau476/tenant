@@ -117,5 +117,7 @@ export const updateOrderStatus = (uuid, status) => {
 export const updateStand = (id, data) => apiClient.patch(`/tenants/stands/${id}/`, data, {
   headers: { 'Content-Type': 'multipart/form-data' }
 });
+export const checkAuth = () => apiClient.get('/users/check-auth/');
+export const logout = () => apiClient.post('/users/logout/');
 
 export default apiClient;
