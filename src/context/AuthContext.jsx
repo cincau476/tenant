@@ -12,11 +12,13 @@ export const AuthProvider = ({ children }) => {
 
   // Fungsi helper untuk menentukan URL Login secara dinamis
   const getLoginUrl = () => {
-    // Jika sedang di lokal, pakai localhost. Jika di VM, pakai domain kantinku.com
-    return window.location.hostname === 'localhost' 
-      ? 'http://localhost:5173/login' 
-      : 'https://www.kantinku.com/login';
-  };
+    // Jika sedang di lingkungan produksi (bukan localhost), arahkan ke domain utama
+    if (window.location.hostname !== 'localhost') {
+      return 'https://www.kantinku.com/login';
+    }
+    // Fallback untuk development
+    return 'http://localhost:5173/login';
+};
 
   const login = useCallback((newToken, userData) => {
     localStorage.setItem('token', newToken);
