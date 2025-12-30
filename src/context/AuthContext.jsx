@@ -1,37 +1,69 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+// src/context/AuthContext.jsx (Portal Tenant)
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import { checkAuth, logout as logoutApi } from '../api/apiService'; 
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  // Ambil token awal dengan aman
-  const initialToken = localStorage.getItem('token');
-  const initialUser = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null;
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [token, setToken] = useState(initialToken);
-  const [user, setUser] = useState(initialUser);
+  const getLoginUrl = () => {
+    return window.location.hostname === 'localhost' 
+      ? 'http://localhost:5173/login' 
+      : 'https://www.kantinku.com/login';
+  };
 
-  // LOGIN: Simpan data ke state dan localStorage
-  const login = useCallback((newToken, userData) => {
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setToken(newToken);
-    setUser(userData);
-  }, []); 
+  useEffect(() => {
+    const initAuth = async () => {
+      // 1. Tangkap Token dari URL (biasanya saat redirect dari portal utama)
+      const params = new URLSearchParams(window.location.search);
+      const tokenFromUrl = params.get('token');
+      if (tokenFromUrl) {
+        localStorage.setItem('tenant_token', tokenFromUrl); // MENGGUNAKAN tenant_token
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
 
-  // LOGOUT: Hapus data dan arahkan langsung ke domain produksi
-  const logout = useCallback(() => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
-    
-    // Langsung arahkan ke domain utama tanpa cek localhost
-    window.location.href = 'https://www.kantinku.com/login'; 
+      // 2. Cek Validitas menggunakan key spesifik
+      const token = localStorage.getItem('tenant_token');
+      if (!token) {
+        window.location.href = getLoginUrl();
+        return;
+      }
+
+      try {
+        const response = await checkAuth(); 
+        setUser(response.data.user); 
+      } catch (error) {
+        console.error("Auth Failed:", error);
+        localStorage.removeItem('tenant_token'); // HAPUS tenant_token
+        window.location.href = getLoginUrl();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    initAuth();
   }, []);
 
+  const logout = async () => {
+    try {
+      await logoutApi(); 
+    } catch (err) {
+      console.warn("Logout server fail", err);
+    } finally {
+      localStorage.removeItem('tenant_token'); // HAPUS tenant_token
+      setUser(null);
+      window.location.href = getLoginUrl();
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, isAuthenticated: !!token }}>
-      {children}
+    <AuthContext.Provider value={{ user, isLoading, logout }}>
+      {!isLoading ? children : (
+        <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
+            Memuat Sistem Tenant...
+        </div>
+      )}
     </AuthContext.Provider>
   );
 };
