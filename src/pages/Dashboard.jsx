@@ -1,101 +1,113 @@
-import React, { useState, useEffect } from 'react';
+// src/pages/Dashboard.jsx
+import React, { useEffect, useState } from 'react';
+import Sidebar from '../components/Sidebar';
 import StatCard from '../components/StatCard';
 import SalesChart from '../components/SalesChart';
 import TopProducts from '../components/TopProducts';
-import { DollarSign, ShoppingCart, TrendingUp } from 'lucide-react';
-import { getReportSummary } from '../api/apiService';
+import { getDashboardStats } from '../api/apiService';
+import { 
+  FiDollarSign, 
+  FiShoppingBag, 
+  FiUsers, 
+  FiCheckCircle, 
+  FiLoader 
+} from 'react-icons/fi';
 
-const Dashboard = () => {
-  const [data, setData] = useState(null);
+export default function Dashboard() {
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchStats = async () => {
       try {
-        setLoading(true);
-        const response = await getReportSummary();
-        setData(response.data);
-        setError(null);
-      } catch (err) {
-        setError('Gagal memuat data dashboard. Pastikan server aktif dan Anda sudah login.');
-        console.error(err);
+        const response = await getDashboardStats();
+        setStats(response.data);
+      } catch (error) {
+        console.error("Error fetching stats:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchDashboardData();
+    fetchStats();
   }, []);
 
-  if (loading) return (
-    <div className="flex justify-center items-center h-64">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
-      <p className="ml-3 text-gray-500">Memuat data...</p>
-    </div>
-  );
-
-  if (error) return (
-    <div className="bg-red-50 border-l-4 border-red-400 p-4 mt-4">
-      <p className="text-red-700">{error}</p>
-    </div>
-  );
-
-  // --- LOGIKA AMAN (Safe Access) ---
-  // Pastikan data memiliki properti yang dibutuhkan, jika tidak gunakan default
-  const statsToday = data?.stats_today || { total: 0, preparing: 0 };
-  const standPerf = data?.stand_performance?.[0] || { revenue: 0, orders: 0 };
-  const topProduct = data?.top_selling_products?.[0] || { menu_item__name: 'Belum ada data', total_sold: 0 };
-  const salesByHour = data?.sales_by_hour || [];
-
-  const statsCards = [
-    {
-      title: 'Pendapatan Hari Ini',
-      value: `Rp ${Number(standPerf.revenue).toLocaleString('id-ID')}`,
-      change: `${standPerf.orders} pesanan`,
-      changeType: 'neutral',
-      icon: DollarSign,
-    },
-    {
-      title: 'Total Pesanan',
-      value: statsToday.total,
-      change: `${statsToday.preparing} sedang diproses`,
-      changeType: 'increase',
-      icon: ShoppingCart,
-    },
-    {
-      title: 'Produk Terlaris',
-      value: topProduct.menu_item__name,
-      change: `${topProduct.total_sold} porsi terjual`,
-      changeType: 'neutral',
-      icon: TrendingUp,
-    },
-  ];
-
-  const formattedChartData = salesByHour.map(item => ({
-    name: `${item.hour}:00`,
-    sales: item.orders,
-  }));
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-gray-900 items-center justify-center">
+        <FiLoader className="w-10 h-10 text-orange-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Ringkasan Stand</h1>
-        <p className="text-gray-500">Pantau performa penjualan Anda secara real-time</p>
-      </header>
+    <div className="flex flex-col lg:flex-row min-h-screen bg-gray-900 text-white overflow-x-hidden">
+      {/* Sidebar - Akan otomatis jadi Bottom Nav di HP/iPad karena logic Sidebar.jsx kita */}
+      <Sidebar />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {statsCards.map((stat, index) => (
-          <StatCard key={index} {...stat} />
-        ))}
-      </div>
+      {/* Main Content */}
+      <main className="flex-1 lg:ml-64 w-full transition-all duration-300">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+          
+          {/* Header Section */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+              <h1 className="text-2xl font-bold">Dashboard Tenant</h1>
+              <p className="text-gray-400 text-sm">Pantau performa kantin Anda hari ini.</p>
+            </div>
+            <div className="text-xs bg-gray-800 px-3 py-1 rounded-full text-orange-400 border border-orange-500/20">
+              Live Update
+            </div>
+          </div>
 
-      <div className="mt-8 space-y-8">
-        {/* Pastikan SalesChart menerima data yang benar */}
-        <SalesChart data={formattedChartData} />
-        <TopProducts productsData={data?.top_selling_products || []} />
-      </div>
+          {/* Grid Stat Cards */}
+          {/* Implementasi Responsif: 1 kolom (HP), 2 kolom (iPad), 4 kolom (Desktop) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard 
+              title="Pendapatan" 
+              value={`Rp ${stats?.main_stats?.total_revenue?.toLocaleString() || '0'}`} 
+              icon={<FiDollarSign />} 
+              color="text-green-500"
+            />
+            <StatCard 
+              title="Total Pesanan" 
+              value={stats?.stats_today?.total || '0'} 
+              icon={<FiShoppingBag />} 
+              color="text-blue-500"
+            />
+            <StatCard 
+              title="Pelanggan Aktif" 
+              value={stats?.main_stats?.active_customers || '0'} 
+              icon={<FiUsers />} 
+              color="text-purple-500"
+            />
+            <StatCard 
+              title="Selesai" 
+              value={stats?.stats_today?.completed || '0'} 
+              icon={<FiCheckCircle />} 
+              color="text-orange-500"
+            />
+          </div>
+
+          {/* Charts Section */}
+          {/* Implementasi Responsif: Tumpuk vertikal di HP, samping-sampingan di iPad Pro/Desktop (xl) */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-gray-700 overflow-x-auto">
+              <h3 className="text-lg font-semibold mb-4">Grafik Penjualan Per Jam</h3>
+              <div className="min-w-[300px]"> {/* Menjamin chart tidak gepeng di HP */}
+                <SalesChart data={stats?.sales_by_hour} />
+              </div>
+            </div>
+
+            <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-gray-700">
+              <h3 className="text-lg font-semibold mb-4">5 Menu Terlaris</h3>
+              <TopProducts products={stats?.top_selling_products} />
+            </div>
+          </div>
+
+          {/* Tambahan Spacer untuk Mobile agar tidak tertutup Bottom Nav */}
+          <div className="h-20 lg:hidden"></div>
+        </div>
+      </main>
     </div>
   );
-};
-
-export default Dashboard;
+}
