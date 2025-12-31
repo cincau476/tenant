@@ -1,4 +1,3 @@
-// src/context/AuthContext.jsx (Portal Tenant)
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { checkAuth, logout as logoutApi } from '../api/apiService'; 
 
@@ -16,27 +15,31 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const initAuth = async () => {
-      // 1. Tangkap Token dari URL (biasanya saat redirect dari portal utama)
+      // 1. Tangkap Token dari URL (saat redirect dari portal utama)
       const params = new URLSearchParams(window.location.search);
       const tokenFromUrl = params.get('token');
+      
       if (tokenFromUrl) {
-        localStorage.setItem('tenant_token', tokenFromUrl); // MENGGUNAKAN tenant_token
+        // Pindah ke sessionStorage agar token hilang saat browser ditutup
+        sessionStorage.setItem('tenant_token', tokenFromUrl); 
         window.history.replaceState({}, document.title, window.location.pathname);
       }
 
-      // 2. Cek Validitas menggunakan key spesifik
-      const token = localStorage.getItem('tenant_token');
+      // 2. Ambil token dari sessionStorage
+      const token = sessionStorage.getItem('tenant_token');
       if (!token) {
         window.location.href = getLoginUrl();
         return;
       }
 
       try {
+        // Verifikasi token ke backend
         const response = await checkAuth(); 
         setUser(response.data.user); 
       } catch (error) {
         console.error("Auth Failed:", error);
-        localStorage.removeItem('tenant_token'); // HAPUS tenant_token
+        // Hapus token jika tidak valid
+        sessionStorage.removeItem('tenant_token'); 
         window.location.href = getLoginUrl();
       } finally {
         setIsLoading(false);
@@ -51,7 +54,8 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.warn("Logout server fail", err);
     } finally {
-      localStorage.removeItem('tenant_token'); // HAPUS tenant_token
+      // Bersihkan sesi secara total
+      sessionStorage.clear();
       setUser(null);
       window.location.href = getLoginUrl();
     }
@@ -60,7 +64,7 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{ user, isLoading, logout }}>
       {!isLoading ? children : (
-        <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
+        <div className="flex h-screen items-center justify-center bg-gray-900 text-white font-medium">
             Memuat Sistem Tenant...
         </div>
       )}
