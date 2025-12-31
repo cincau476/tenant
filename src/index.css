@@ -10,10 +10,11 @@
   }
 
   body {
-    /* antialiased membuat font terlihat lebih bersih di layar Retina iPhone/iPad */
-    @apply antialiased text-sm md:text-base bg-gray-900;
+    /* Ubah dari bg-gray-900 menjadi bg-white */
+    @apply antialiased text-sm md:text-base bg-white; 
     overflow-x: hidden;
     -webkit-tap-highlight-color: transparent;
+    color: #1a202c; /* Tambahkan warna teks gelap agar tulisan terbaca di bg putih */
   }
 
   /* Responsivitas khusus iPad (768px - 1024px) */
