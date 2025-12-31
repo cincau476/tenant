@@ -13,8 +13,8 @@ const apiClient = axios.create({
  * Interceptor untuk menyisipkan tenant_token
  */
 apiClient.interceptors.request.use((config) => {
-  // MENGGUNAKAN tenant_token AGAR TIDAK BENTROK DENGAN ADMIN
-  const token = localStorage.getItem('tenant_token');
+  // MENGGUNAKAN tenant_token DARI sessionStorage AGAR TIDAK BENTROK
+  const token = sessionStorage.getItem('tenant_token');
   
   if (token) {
     config.headers.Authorization = `Token ${token}`;
