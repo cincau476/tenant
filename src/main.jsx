@@ -6,7 +6,7 @@ import App from './App.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter> {/* Bungkus App di sini */}
+    <BrowserRouter basename="/tenant"> {/* Bungkus App di sini */}
       <App />
     </BrowserRouter>
   </StrictMode>,
