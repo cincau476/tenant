@@ -6,19 +6,47 @@ export const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 const apiClient = axios.create({
   baseURL: BASE_URL, 
   timeout: 10000,
-  withCredentials: true,
+  withCredentials: true, // Ini mengirim cookie, jadi kita WAJIB handle CSRF
 });
 
 /**
- * Interceptor untuk menyisipkan tenant_token
+ * Fungsi Helper untuk mengambil nilai Cookie (Standar Django)
+ */
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      // Does this cookie string begin with the name we want?
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+/**
+ * Interceptor Request
+ * 1. Sisipkan Token Authorization (jika ada)
+ * 2. Sisipkan X-CSRFToken (Wajib jika withCredentials: true)
  */
 apiClient.interceptors.request.use((config) => {
-  // MENGGUNAKAN tenant_token DARI sessionStorage AGAR TIDAK BENTROK
+  // 1. Handle Auth Token (Tenant Token)
   const token = sessionStorage.getItem('tenant_token');
-  
   if (token) {
     config.headers.Authorization = `Token ${token}`;
   }
+
+  // 2. Handle CSRF Token (PENTING untuk PATCH/POST/DELETE)
+  // Kita ambil dari cookie bernama 'csrftoken' (default Django)
+  const csrfToken = getCookie('csrftoken');
+  if (csrfToken) {
+    config.headers['X-CSRFToken'] = csrfToken;
+  }
+  
   return config;
 }, (error) => {
   return Promise.reject(error);
@@ -27,40 +55,15 @@ apiClient.interceptors.request.use((config) => {
 // --- Kumpulan Fungsi API ---
 
 // --- Dashboard / Reports ---
-/**
- * Mengambil data ringkasan dashboard.
- * Endpoint: /api/reports/summary/
- */
-export const getReportSummary = () => {
-  return apiClient.get('/reports/summary/');
-};
-
-export const getDashboardStats = () => {
-  return apiClient.get('/reports/summary/');
-};
+export const getReportSummary = () => apiClient.get('/reports/summary/');
+export const getDashboardStats = () => apiClient.get('/reports/summary/');
 
 // --- Stands (Tenants) ---
-/**
- * Mengambil daftar stand milik seller yang login.
- * SESUAI BACKEND: /api/tenants/stands/
- */
 export const getStands = () => apiClient.get('/tenants/stands/');
-
-/**
- * Mengambil detail satu stand.
- */
-export const getStandDetails = (standId) => {
-  return apiClient.get(`/tenants/stands/${standId}/`);
-};
+export const getStandDetails = (standId) => apiClient.get(`/tenants/stands/${standId}/`);
 
 // --- Menu Items ---
-/**
- * Mengambil daftar menu untuk stand tertentu.
- * SESUAI BACKEND: /api/tenants/stands/<id>/menus/
- */
-export const getMenus = (standId) => {
-  return apiClient.get(`/tenants/stands/${standId}/menus/`);
-};
+export const getMenus = (standId) => apiClient.get(`/tenants/stands/${standId}/menus/`);
 
 export const createMenu = (standId, data) => {
   return apiClient.post(`/tenants/stands/${standId}/menus/`, data, {
@@ -74,49 +77,27 @@ export const updateMenu = (standId, menuId, data) => {
   });
 };
 
-export const deleteMenu = (standId, menuId) => {
-  return apiClient.delete(`/tenants/stands/${standId}/menus/${menuId}/`);
-};
+export const deleteMenu = (standId, menuId) => apiClient.delete(`/tenants/stands/${standId}/menus/${menuId}/`);
 
 // --- Variant Groups ---
-export const getVariantGroups = (standId) => {
-  return apiClient.get(`/tenants/stands/${standId}/variant-groups/`);
-};
-
-export const createVariantGroup = (standId, data) => {
-  return apiClient.post(`/tenants/stands/${standId}/variant-groups/`, data);
-};
-
-export const deleteVariantGroup = (standId, groupId) => {
-  return apiClient.delete(`/tenants/stands/${standId}/variant-groups/${groupId}/`);
-};
+export const getVariantGroups = (standId) => apiClient.get(`/tenants/stands/${standId}/variant-groups/`);
+export const createVariantGroup = (standId, data) => apiClient.post(`/tenants/stands/${standId}/variant-groups/`, data);
+export const deleteVariantGroup = (standId, groupId) => apiClient.delete(`/tenants/stands/${standId}/variant-groups/${groupId}/`);
 
 // --- Variant Options ---
-export const createVariantOption = (standId, groupId, data) => {
-  return apiClient.post(`/tenants/stands/${standId}/variant-groups/${groupId}/options/`, data);
-};
-
-export const deleteVariantOption = (standId, groupId, optionId) => {
-  return apiClient.delete(`/tenants/stands/${standId}/variant-groups/${groupId}/options/${optionId}/`);
-};
+export const createVariantOption = (standId, groupId, data) => apiClient.post(`/tenants/stands/${standId}/variant-groups/${groupId}/options/`, data);
+export const deleteVariantOption = (standId, groupId, optionId) => apiClient.delete(`/tenants/stands/${standId}/variant-groups/${groupId}/options/${optionId}/`);
 
 // --- Orders ---
-/**
- * Mengambil semua pesanan untuk tenant terkait.
- * SESUAI BACKEND: /api/orders/all/
- */
-export const getOrders = () => {
-  return apiClient.get('/orders/all/'); 
-};
+export const getOrders = () => apiClient.get('/orders/all/'); 
+export const updateOrderStatus = (uuid, status) => apiClient.patch(`/orders/${uuid}/status/`, { status });
 
-// Fungsi ini akan memanggil http://localhost:8000/api/orders/<uuid>/status/
-export const updateOrderStatus = (uuid, status) => {
-  return apiClient.patch(`/orders/${uuid}/status/`, { status });
-};
+// --- Update Stand (PERBAIKAN HEADER) ---
+// Note: Jangan manual set Content-Type multipart di sini jika pakai FormData,
+// Biarkan Axios yang set Boundary-nya. Tapi kalau mau manual, pastikan benar.
+// Code di bawah ini aman karena header Auth & CSRF diurus Interceptor.
+export const updateStand = (id, data) => apiClient.patch(`/tenants/stands/${id}/`, data);
 
-export const updateStand = (id, data) => apiClient.patch(`/tenants/stands/${id}/`, data, {
-  headers: { 'Content-Type': 'multipart/form-data' }
-});
 export const checkAuth = () => apiClient.get('/users/check-auth/');
 export const logout = () => apiClient.post('/users/logout/');
 
