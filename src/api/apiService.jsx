@@ -6,46 +6,24 @@ export const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 const apiClient = axios.create({
   baseURL: BASE_URL, 
   timeout: 10000,
-  withCredentials: true, // Ini mengirim cookie, jadi kita WAJIB handle CSRF
+  // PENTING: Set ke false. Kita hanya mengandalkan Token, bukan Cookie.
+  // Ini akan mematikan pemeriksaan CSRF di Django.
+  withCredentials: false, 
 });
 
 /**
- * Fungsi Helper untuk mengambil nilai Cookie (Standar Django)
- */
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      // Does this cookie string begin with the name we want?
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
-
-/**
- * Interceptor Request
- * 1. Sisipkan Token Authorization (jika ada)
- * 2. Sisipkan X-CSRFToken (Wajib jika withCredentials: true)
+ * Interceptor untuk menyisipkan tenant_token
  */
 apiClient.interceptors.request.use((config) => {
-  // 1. Handle Auth Token (Tenant Token)
+  // Ambil token dari storage
   const token = sessionStorage.getItem('tenant_token');
+  
   if (token) {
     config.headers.Authorization = `Token ${token}`;
   }
-
-  // 2. Handle CSRF Token (PENTING untuk PATCH/POST/DELETE)
-  // Kita ambil dari cookie bernama 'csrftoken' (default Django)
-  const csrfToken = getCookie('csrftoken');
-  if (csrfToken) {
-    config.headers['X-CSRFToken'] = csrfToken;
-  }
+  
+  // Kita TIDAK perlu lagi menyisipkan X-CSRFToken secara manual
+  // karena withCredentials=false (Cookie tidak dikirim).
   
   return config;
 }, (error) => {
@@ -92,10 +70,8 @@ export const deleteVariantOption = (standId, groupId, optionId) => apiClient.del
 export const getOrders = () => apiClient.get('/orders/all/'); 
 export const updateOrderStatus = (uuid, status) => apiClient.patch(`/orders/${uuid}/status/`, { status });
 
-// --- Update Stand (PERBAIKAN HEADER) ---
-// Note: Jangan manual set Content-Type multipart di sini jika pakai FormData,
-// Biarkan Axios yang set Boundary-nya. Tapi kalau mau manual, pastikan benar.
-// Code di bawah ini aman karena header Auth & CSRF diurus Interceptor.
+// --- Update Stand ---
+// Biarkan Axios mengatur Content-Type otomatis (multipart/form-data) karena kita kirim FormData
 export const updateStand = (id, data) => apiClient.patch(`/tenants/stands/${id}/`, data);
 
 export const checkAuth = () => apiClient.get('/users/check-auth/');
