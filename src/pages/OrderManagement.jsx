@@ -3,6 +3,19 @@ import React, { useState, useEffect } from 'react';
 import KanbanColumn from '../components/KanbanColumn';
 import { getOrders, updateOrderStatus } from '../api/apiService';
 
+
+
+const loadOrders = async () => {
+    try {
+        const response = await api.getOrders();
+        // PASANG PENGAMAN INI SEBELUM DISIMPAN KE STATE:
+        const safeOrders = Array.isArray(response) ? response : (response?.results || []);
+        
+        setOrders(safeOrders);
+    } catch (error) {
+        console.error(error);
+    }
+}
 // Struktur kolom kosong (tidak berubah)
 const emptyColumns = {
   'PAID': { id: 'PAID', title: 'Pesanan Baru', status: 'PAID', orders: [], },

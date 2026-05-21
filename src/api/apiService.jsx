@@ -5,19 +5,12 @@ export const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const apiClient = axios.create({
   baseURL: BASE_URL, 
-  timeout: 15000, // Tambah sedikit timeout untuk Tenant karena ada upload gambar (multipart)
-  
-  // SECURE CODING: WAJIB TRUE! 
-  // 1. Agar browser mengirim HttpOnly Cookie (Refresh Token).
-  // 2. Agar Django bisa memvalidasi CSRF Token untuk mencegah serangan forgery.
+  timeout: 15000, 
   withCredentials: true, 
   xsrfCookieName: 'csrftoken',
   xsrfHeaderName: 'X-CSRFToken',
 });
 
-// ==========================================
-// ANTI-RACE CONDITION (MUTEX LOCK)
-// ==========================================
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -36,15 +29,13 @@ const processQueue = (error, token = null) => {
 // REQUEST INTERCEPTOR
 // ==========================================
 apiClient.interceptors.request.use((config) => {
-  // Disarankan menggunakan localStorage agar konsisten dengan Admin/Kasir.
-  // Pastikan saat login, token disimpan dengan nama 'access_token'
-  const token = localStorage.getItem('access_token');
+  // PERBAIKAN 1: Sesuai dengan aplikasi Login utama (LoginPage.jsx)
+  // Gunakan 'tenant_token' BUKAN 'access_token'
+  const token = sessionStorage.getItem('tenant_token');
   
   if (token) {
-    // SECURE CODING: Ubah dari 'Token' menjadi 'Bearer' sesuai SimpleJWT Django
     config.headers.Authorization = `Bearer ${token}`;
   }
-  
   return config;
 }, (error) => {
   return Promise.reject(error);
@@ -54,18 +45,25 @@ apiClient.interceptors.request.use((config) => {
 // RESPONSE INTERCEPTOR (SILENT REFRESH)
 // ==========================================
 apiClient.interceptors.response.use(
-  (response) => response,
+  // PENGAMAN 2: Ekstrak `.results` otomatis di level response jika tersedia
+  // Ini menghindari error .map() / .slice() di seluruh komponen
+  (response) => {
+    // Jika backend mengembalikan object dengan properti 'results', kembalikan results-nya saja.
+    // Jika tidak (seperti response upload atau login), kembalikan aslinya.
+    if (response.data && response.data.results !== undefined) {
+      response.data = response.data.results;
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 
-    // Hindari infinite loop jika request ke /refresh gagal
     if (originalRequest.url.includes('/users/token/refresh/')) {
         return Promise.reject(error);
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
         
-        // JIKA SEDANG REFRESH: Antrekan
         if (isRefreshing) {
             return new Promise(function(resolve, reject) {
                 failedQueue.push({resolve, reject});
@@ -77,65 +75,53 @@ apiClient.interceptors.response.use(
             });
         }
 
-        // JIKA BELUM REFRESH: Kunci Gembok
         originalRequest._retry = true;
         isRefreshing = true;
 
         try {
-            // Minta access token baru via HttpOnly Cookie refresh_token
             const response = await axios.post(`${BASE_URL}/users/token/refresh/`, {}, {
                 withCredentials: true 
             });
             
             const newAccessToken = response.data.access;
-            localStorage.setItem('access_token', newAccessToken);
+            // PERBAIKAN 1: Simpan ke 'tenant_token'
+            sessionStorage.setItem('tenant_token', newAccessToken);
             
             apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newAccessToken;
             originalRequest.headers['Authorization'] = 'Bearer ' + newAccessToken;
             
-            // Buka gembok & proses antrean
             processQueue(null, newAccessToken);
             return apiClient(originalRequest);
 
         } catch (refreshError) {
             processQueue(refreshError, null);
-            localStorage.removeItem('access_token');
-            // Tendang ke login jika sesi benar-benar habis (di atas 1 hari)
-            window.location.href = '/login'; 
+            // PERBAIKAN 1: Bersihkan token dan arahkan ke domain utama
+            sessionStorage.removeItem('tenant_token');
+            sessionStorage.removeItem('tenant_user');
+            window.location.href = `${window.location.origin}/login`; 
             return Promise.reject(refreshError);
         } finally {
             isRefreshing = false;
         }
     }
     
-    // Jangan bocorkan stack trace ke console di Production
-    if (import.meta.env.MODE !== 'production') {
-      console.error('Tenant API Error:', error.response?.status, error.message);
-    }
     return Promise.reject(error);
   }
 );
 
-
 // ==========================================
 // KUMPULAN FUNGSI API TENANT
 // ==========================================
+export const getReportSummary = () => apiClient.get('/orders/reports/summary/');
+export const getDashboardStats = () => apiClient.get('/orders/reports/summary/');
 
-// --- Dashboard / Reports ---
-export const getReportSummary = () => apiClient.get('/reports/summary/');
-export const getDashboardStats = () => apiClient.get('/reports/summary/');
-
-// --- Stands (Tenants) ---
 export const getStands = () => apiClient.get('/tenants/stands/');
 export const getStandDetails = (standId) => apiClient.get(`/tenants/stands/${standId}/`);
 
-// --- Menu Items ---
 export const getMenus = (standId) => apiClient.get(`/tenants/stands/${standId}/menus/`);
 
 export const createMenu = (standId, data) => {
   return apiClient.post(`/tenants/stands/${standId}/menus/`, data, {
-    // Axios otomatis akan mendeteksi FormData dan mengatur boundary Content-Type,
-    // tetapi kita tetap mendefinisikannya demi kejelasan
     headers: { 'Content-Type': 'multipart/form-data' }
   });
 };
@@ -148,24 +134,18 @@ export const updateMenu = (standId, menuId, data) => {
 
 export const deleteMenu = (standId, menuId) => apiClient.delete(`/tenants/stands/${standId}/menus/${menuId}/`);
 
-// --- Variant Groups ---
 export const getVariantGroups = (standId) => apiClient.get(`/tenants/stands/${standId}/variant-groups/`);
 export const createVariantGroup = (standId, data) => apiClient.post(`/tenants/stands/${standId}/variant-groups/`, data);
 export const deleteVariantGroup = (standId, groupId) => apiClient.delete(`/tenants/stands/${standId}/variant-groups/${groupId}/`);
 
-// --- Variant Options ---
 export const createVariantOption = (standId, groupId, data) => apiClient.post(`/tenants/stands/${standId}/variant-groups/${groupId}/options/`, data);
 export const deleteVariantOption = (standId, groupId, optionId) => apiClient.delete(`/tenants/stands/${standId}/variant-groups/${groupId}/options/${optionId}/`);
 
-// --- Orders ---
 export const getOrders = () => apiClient.get('/orders/all/'); 
 export const updateOrderStatus = (uuid, status) => apiClient.patch(`/orders/${uuid}/status/`, { status });
 
-// --- Update Stand ---
 export const updateStand = (id, data) => apiClient.patch(`/tenants/stands/${id}/`, data);
 
-// --- Auth ---
-// Pastikan komponen form login Anda memanggil ini dan menyimpan token ke localStorage
 export const loginTenant = (credentials) => apiClient.post('/users/login/', credentials); 
 export const checkAuth = () => apiClient.get('/users/check-auth/');
 export const logout = () => apiClient.post('/users/logout/');
