@@ -1,6 +1,7 @@
 // src/pages/Dashboard.jsx
 import React, { useEffect, useState } from 'react';
-import Sidebar from '../components/Sidebar';
+import MfaSetupModal from '../components/MfaSetupModal.jsx';
+import { useAuth } from '../context/AuthContext.jsx'; // Mengambil data user
 import StatCard from '../components/StatCard';
 import SalesChart from '../components/SalesChart';
 import TopProducts from '../components/TopProducts';
@@ -16,6 +17,10 @@ import {
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // State untuk mengontrol Modal Setup MFA
+  const [isMfaOpen, setIsMfaOpen] = useState(false);
+  const { user } = useAuth(); // Ambil data user dari context
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -40,18 +45,35 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+    <div className="space-y-6 animate-fadeIn">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Selamat Datang!</h2>
           <p className="text-gray-500 text-sm">Pantau performa kantin Anda hari ini.</p>
         </div>
-        <div className="text-xs bg-orange-100 px-3 py-1 rounded-full text-orange-600 border border-orange-200 font-medium">
-          Live Update
+        
+        <div className="flex items-center gap-3">
+          {/* Tombol Setup MFA Dinamis */}
+          {user && (
+            <button
+              onClick={() => setIsMfaOpen(true)}
+              className={`flex items-center gap-2 font-semibold text-sm px-4 py-2 rounded-xl transition-all shadow-sm border ${
+                user.is_mfa_enabled
+                  ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                  : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+              }`}
+            >
+              {user.is_mfa_enabled ? '✅ MFA Aktif (Reset)' : '⚠️ Aktifkan MFA'}
+            </button>
+          )}
+
+          <div className="text-xs bg-orange-100 px-3 py-2.5 rounded-full text-orange-600 border border-orange-200 font-medium">
+            Live Update
+          </div>
         </div>
       </div>
 
-      {/* Grid Stat Cards - Sekarang menggunakan background putih */}
+      {/* Grid Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title="Pendapatan" 
@@ -92,6 +114,17 @@ export default function Dashboard() {
           <TopProducts productsData={stats?.top_selling_products} />
         </div>
       </div>
+
+      {/* Modal MFA Setup dengan fitur Auto-Reload saat sukses */}
+      <MfaSetupModal 
+        isOpen={isMfaOpen} 
+        onClose={() => setIsMfaOpen(false)} 
+        onSuccess={() => {
+          // Melakukan refresh halaman setelah OTP sukses diverifikasi
+          // agar AuthContext kembali mengambil data terbaru dari backend Django
+          window.location.reload(); 
+        }}
+      />
     </div>
   );
 }
