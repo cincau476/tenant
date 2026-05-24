@@ -1,3 +1,5 @@
+// src/components/MfaSetupModal.jsx
+
 import React, { useState, useEffect } from 'react';
 import * as api from '../api/apiService.jsx';
 
@@ -10,10 +12,12 @@ export default function MfaSetupModal({ isOpen, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Pemicu awal untuk mengambil QR Code dari backend
   useEffect(() => {
     if (isOpen) {
       handleGenerateMfa();
     } else {
+      // Reset state saat modal ditutup
       setStep(1);
       setQrImage('');
       setOtpCode('');
@@ -26,11 +30,13 @@ export default function MfaSetupModal({ isOpen, onClose, onSuccess }) {
     setLoading(true);
     setError('');
     try {
-      const data = await api.generateMfaSetup();
-      setQrImage(data.qr_code_base64);
-      setSecretKey(data.secret_key);
+      const response = await api.generateMfaSetup();
+      // Axios menyimpan payload di dalam properti .data
+      setQrImage(response.data.qr_code_base64);
+      setSecretKey(response.data.secret_key);
     } catch (err) {
-      setError(err.message || 'Gagal memuat QR Code MFA.');
+      // Menangkap pesan error detail dari Django
+      setError(err.response?.data?.detail || 'Gagal memuat QR Code MFA.');
     } finally {
       setLoading(false);
     }
@@ -42,12 +48,16 @@ export default function MfaSetupModal({ isOpen, onClose, onSuccess }) {
     setLoading(true);
     setError('');
     try {
-      const data = await api.verifyMfaSetup(otpCode);
-      setBackupCodes(data.backup_codes || []);
-      setStep(2);
+      const response = await api.verifyMfaSetup(otpCode);
+      // Axios menyimpan payload di dalam properti .data
+      setBackupCodes(response.data.backup_codes || []);
+      setStep(2); // Pindah ke langkah menampilkan backup codes
+      
+      // Kirim sinyal sukses agar halaman utama auto-refresh
       if (onSuccess) onSuccess(); 
     } catch (err) {
-      setError(err.message || 'Kode OTP salah atau kedaluwarsa.');
+      // Menangkap pesan error detail dari Django
+      setError(err.response?.data?.detail || 'Kode OTP salah atau kedaluwarsa.');
     } finally {
       setLoading(false);
     }
@@ -57,7 +67,7 @@ export default function MfaSetupModal({ isOpen, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white text-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-100 text-left">
+      <div className="bg-white text-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-100 text-left animate-fadeIn">
         
         {/* HEADER */}
         <div className="bg-gray-900 px-6 py-4 flex justify-between items-center">
@@ -85,7 +95,7 @@ export default function MfaSetupModal({ isOpen, onClose, onSuccess }) {
           {!loading && step === 1 && (
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-4">
-                Pindai QR Code di bawah ini menggunakan aplikasi **Google Authenticator** di ponsel Anda untuk mengamankan akun Tenant Anda.
+                Pindai QR Code di bawah ini menggunakan aplikasi **Google Authenticator** atau **Microsoft Authenticator** di ponsel Anda.
               </p>
               
               {qrImage && (
@@ -131,7 +141,7 @@ export default function MfaSetupModal({ isOpen, onClose, onSuccess }) {
           {!loading && step === 2 && (
             <div>
               <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 mb-4 text-xs font-medium">
-                ⚠️ **PENTING: SIMPAN KODE CADANGAN INI!**
+                ⚠️ **PENTING: SIMPAN KODE CADANGAN INI!** Kode ini hanya ditampilkan sekali. Gunakan salah satu kode di bawah ini jika ponsel Anda hilang atau tidak bisa menerima OTP.
               </div>
               
               <div className="grid grid-cols-2 gap-2 bg-gray-900 p-4 rounded-xl font-mono text-center text-sm text-green-400 mb-6 border border-gray-800">
