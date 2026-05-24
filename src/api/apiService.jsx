@@ -151,13 +151,9 @@ export const checkAuth = () => apiClient.get('/users/check-auth/');
 export const logout = () => apiClient.post('/users/logout/');
 
 // === MFA Keamanan ===
-export const generateMfaSetup = () => request('/users/mfa/setup/generate/', { 
-    method: 'POST' 
-});
+export const generateMfaSetup = () => apiClient.post('/users/mfa/setup/generate/');
 
-export const verifyMfaSetup = (otpCode) => request('/users/mfa/setup/verify/', { 
-    method: 'POST', 
-    body: JSON.stringify({ otp_code: otpCode }) 
+export const verifyMfaSetup = (otpCode) => apiClient.post('/users/mfa/setup/verify/', { 
+    otp_code: otpCode 
 });
-
 export default apiClient;
