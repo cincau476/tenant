@@ -1,6 +1,7 @@
 // src/components/Sidebar.jsx
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext'; // IMPORT CONTEXT DI SINI
 import { 
   FiHome, 
   FiShoppingBag, 
@@ -15,6 +16,9 @@ import {
 export default function Sidebar({ onToggle }) {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  
+  // AMBIL FUNGSI LOGOUT DARI AUTH CONTEXT
+  const { logout } = useAuth(); 
 
   const toggleSidebar = () => {
     const newState = !isCollapsed;
@@ -23,18 +27,8 @@ export default function Sidebar({ onToggle }) {
   };
 
   const handleLogout = () => {
-    // 1. Bersihkan semua Token dan Data User dari Storage
-    // (Pastikan nama key disesuaikan jika Anda menggunakan nama lain)
-    localStorage.removeItem('tenant_token');
-    sessionStorage.removeItem('tenant_token');
-    localStorage.removeItem('tenant_user');
-    sessionStorage.removeItem('tenant_user');
-
-    // Jika Anda menggunakan cookies untuk Auth (opsional), 
-    // Anda bisa memanggil API logout di sini sebelum redirect.
-
-    // 2. Arahkan ke halaman login secara dinamis sesuai IP/Domain saat ini
-    window.location.href = `${window.location.origin}/login`;
+    // Memanggil fungsi logout sentral yang ada di AuthContext.jsx
+    logout();
   };
 
   const menuItems = [
@@ -49,7 +43,7 @@ export default function Sidebar({ onToggle }) {
 
   return (
     <>
-      <aside className={`hidden lg:flex flex-col bg-white h-screen fixed left-0 top-0 border-r border-gray-200 z-50 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
+      <aside className={`hidden lg:flex flex-col bg-white h-screen fixed left-0 top-0 border-r border-gray-200 z-[9999] transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
         <div className={`p-6 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!isCollapsed && (
             <div>
@@ -95,8 +89,7 @@ export default function Sidebar({ onToggle }) {
         </div>
       </aside>
 
-      {/* Mobile Bottom Nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-1 z-[100] flex justify-around items-center shadow-lg pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-1 z-[9999] flex justify-around items-center shadow-lg pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
         {menuItems.map((item) => (
           <Link key={item.name} to={item.path} className={`flex flex-col items-center justify-center py-2 px-1 min-w-[64px] ${isActive(item.path) ? 'text-orange-600' : 'text-gray-400'}`}>
             <span className="text-2xl mb-1">{item.icon}</span>
