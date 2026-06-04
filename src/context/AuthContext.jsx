@@ -8,8 +8,9 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   // PERBAIKAN: Gunakan window.location.origin agar dinamis mengikuti IP / Domain saat ini
+  // PERBAIKAN ABSOLUT: Gunakan Relative Path '/login'
   const getLoginUrl = () => {
-    return `${window.location.origin}/login`;
+    return '/login';
   };
 
   useEffect(() => {
