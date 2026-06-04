@@ -24,13 +24,11 @@ const ProtectedRoute = ({ children }) => {
     }
   };
 
-  // Jika masih verifikasi, AuthProvider sudah menampilkan layar loading, 
-  // tapi kita tambahkan pengaman di sini agar tidak terjadi redirect dini.
   if (isLoading) return null;
 
-  // Jika tidak ada user setelah loading selesai, arahkan ke login utama
+  // PERBAIKAN: Gunakan path relatif, BUKAN link kantinku.com
   if (!user) {
-    window.location.href = 'https://www.kantinku.com/login';
+    window.location.href = '/login'; 
     return null;
   }
 
@@ -45,7 +43,7 @@ const ProtectedRoute = ({ children }) => {
           </h1>
           <div className="flex items-center gap-3">
              <span className="text-xs font-bold text-orange-600 uppercase tracking-widest hidden sm:inline">Online</span>
-             <button onClick={logout} className="text-xs text-red-600 font-bold ml-4">LOGOUT</button>
+             <button onClick={logout} className="text-xs text-red-600 font-bold ml-4 hover:underline">LOGOUT</button>
           </div>
         </header>
         
@@ -61,14 +59,12 @@ export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        {/* Rute "/" otomatis menangani token dari URL berkat logic di AuthProvider */}
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/menu" element={<ProtectedRoute><MenuManagement /></ProtectedRoute>} />
         <Route path="/orders" element={<ProtectedRoute><OrderManagement /></ProtectedRoute>} />
         <Route path="/variants" element={<ProtectedRoute><VariantManagement /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><StandSettings /></ProtectedRoute>} />
         
-        {/* Redirect /external-login ke / agar diproses oleh ProtectedRoute & AuthProvider */}
         <Route path="/external-login" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
