@@ -23,8 +23,18 @@ export default function Sidebar({ onToggle }) {
   };
 
   const handleLogout = () => {
-    // Mengarahkan ke domain produksi sesuai logika di App.jsx
-    window.location.href = 'https://www.kantinku.com/login';
+    // 1. Bersihkan semua Token dan Data User dari Storage
+    // (Pastikan nama key disesuaikan jika Anda menggunakan nama lain)
+    localStorage.removeItem('tenant_token');
+    sessionStorage.removeItem('tenant_token');
+    localStorage.removeItem('tenant_user');
+    sessionStorage.removeItem('tenant_user');
+
+    // Jika Anda menggunakan cookies untuk Auth (opsional), 
+    // Anda bisa memanggil API logout di sini sebelum redirect.
+
+    // 2. Arahkan ke halaman login secara dinamis sesuai IP/Domain saat ini
+    window.location.href = `${window.location.origin}/login`;
   };
 
   const menuItems = [
