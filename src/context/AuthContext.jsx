@@ -7,10 +7,9 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // PERBAIKAN: Gunakan window.location.origin agar dinamis mengikuti IP / Domain saat ini
   const getLoginUrl = () => {
-    return window.location.hostname === 'localhost' 
-      ? 'http://localhost:5173/login' 
-      : 'https://www.kantinku.com/login';
+    return `${window.location.origin}/login`;
   };
 
   useEffect(() => {
@@ -35,11 +34,18 @@ export const AuthProvider = ({ children }) => {
       try {
         // Verifikasi token ke backend
         const response = await checkAuth(); 
-        setUser(response.data.user); 
+        
+        // Pengecekan aman untuk response data
+        if (response.data && response.data.user) {
+          setUser(response.data.user); 
+        } else if (response.user) {
+          setUser(response.user);
+        }
       } catch (error) {
         console.error("Auth Failed:", error);
         // Hapus token jika tidak valid
         sessionStorage.removeItem('tenant_token'); 
+        localStorage.removeItem('tenant_token'); // Fallback pembersihan
         window.location.href = getLoginUrl();
       } finally {
         setIsLoading(false);
@@ -54,8 +60,12 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.warn("Logout server fail", err);
     } finally {
-      // Bersihkan sesi secara total
-      sessionStorage.clear();
+      // Bersihkan sesi secara total agar tidak ada token tersisa
+      sessionStorage.removeItem('tenant_token');
+      sessionStorage.removeItem('tenant_user');
+      localStorage.removeItem('tenant_token');
+      localStorage.removeItem('tenant_user');
+      
       setUser(null);
       window.location.href = getLoginUrl();
     }
@@ -64,8 +74,11 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{ user, isLoading, logout }}>
       {!isLoading ? children : (
-        <div className="flex h-screen items-center justify-center bg-gray-900 text-white font-medium">
-            Memuat Sistem Tenant...
+        <div className="flex h-screen items-center justify-center bg-gray-50 text-orange-600 font-medium">
+            <div className="flex flex-col items-center">
+                <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p>Memuat Sistem Tenant...</p>
+            </div>
         </div>
       )}
     </AuthContext.Provider>
