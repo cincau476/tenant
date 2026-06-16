@@ -148,7 +148,20 @@ export const updateStand = (id, data) => apiClient.patch(`/tenants/stands/${id}/
 
 export const loginTenant = (credentials) => apiClient.post('/users/login/', credentials); 
 export const checkAuth = () => apiClient.get('/users/check-auth/');
-export const logout = () => apiClient.post('/users/logout/');
+export const logout = async () => {
+  try {
+    // Kirim sinyal logout ke backend dengan body kosong
+    // (Browser akan otomatis melampirkan HttpOnly Cookie jika ada)
+    await apiClient.post('/users/logout/', {});
+  } catch (error) {
+    // Telan error 400/401 agar tidak membuat aplikasi React panik
+    console.warn("Sesi backend sudah kedaluwarsa atau token ada di cookie. Melanjutkan pembersihan lokal...");
+  } finally {
+    // Apapun yang terjadi di backend, WAJIB hapus token di browser
+    sessionStorage.removeItem('tenant_token');
+    sessionStorage.removeItem('tenant_user');
+  }
+};
 
 // === MFA Keamanan ===
 export const generateMfaSetup = () => apiClient.post('/users/mfa/setup/generate/');
