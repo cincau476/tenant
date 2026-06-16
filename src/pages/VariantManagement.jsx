@@ -99,7 +99,7 @@ const VariantManagement = () => {
   };
   
   const handleCreateGroup = async (name) => {
-    await createVariantGroup(selectedStand.id, name);
+    await createVariantGroup(selectedStand.id, { name: name });
     await refreshGroups(); // Ambil data baru
   };
 
