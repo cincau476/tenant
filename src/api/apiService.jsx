@@ -45,11 +45,7 @@ apiClient.interceptors.request.use((config) => {
 // RESPONSE INTERCEPTOR (SILENT REFRESH)
 // ==========================================
 apiClient.interceptors.response.use(
-  // PENGAMAN 2: Ekstrak `.results` otomatis di level response jika tersedia
-  // Ini menghindari error .map() / .slice() di seluruh komponen
   (response) => {
-    // Jika backend mengembalikan object dengan properti 'results', kembalikan results-nya saja.
-    // Jika tidak (seperti response upload atau login), kembalikan aslinya.
     if (response.data && response.data.results !== undefined) {
       response.data = response.data.results;
     }
@@ -58,10 +54,26 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // --- PERBAIKAN: TANGKAP ERROR 403 ABAC DI SINI ---
+    if (error.response?.status === 403) {
+      const errorMessage = error.response.data?.detail || error.response.data?.message || '';
+      
+      // Deteksi jika ini adalah penolakan dari sistem ABAC
+      if (typeof errorMessage === 'string' && errorMessage.includes('ABAC DENY')) {
+        // Kembalikan format error khusus agar komponen tidak crash
+        return Promise.reject({
+          isAbacError: true,
+          message: errorMessage
+        });
+      }
+    }
+    // -------------------------------------------------
+
     if (originalRequest.url.includes('/users/token/refresh/')) {
         return Promise.reject(error);
     }
 
+    // Blok 401 Silent Refresh Anda (Tetap utuh)
     if (error.response?.status === 401 && !originalRequest._retry) {
         
         if (isRefreshing) {
@@ -84,7 +96,6 @@ apiClient.interceptors.response.use(
             });
             
             const newAccessToken = response.data.access;
-            // PERBAIKAN 1: Simpan ke 'tenant_token'
             sessionStorage.setItem('tenant_token', newAccessToken);
             
             apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newAccessToken;
@@ -95,7 +106,6 @@ apiClient.interceptors.response.use(
 
         } catch (refreshError) {
             processQueue(refreshError, null);
-            // PERBAIKAN 1: Bersihkan token dan arahkan ke domain utama
             sessionStorage.removeItem('tenant_token');
             sessionStorage.removeItem('tenant_user');
             window.location.href = `${window.location.origin}/login`; 
