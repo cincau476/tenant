@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import VariantGroupList from '../components/VariantGroupList';
 import VariantOptionList from '../components/VariantOptionList';
-import VariantGroupModal from '../components/VariantGroupModal'; // <-- Impor
-import VariantOptionModal from '../components/VariantOptionModal'; // <-- Impor
+import VariantGroupModal from '../components/VariantGroupModal';
+import VariantOptionModal from '../components/VariantOptionModal';
 import { ChevronDown } from 'lucide-react';
 import {
   getStands,
@@ -11,9 +11,7 @@ import {
   deleteVariantGroup,
   createVariantOption,
   deleteVariantOption,
-} from '../api/apiService'; // <-- Impor semua API
-
-// Hapus 'initialVariantData'
+} from '../api/apiService';
 
 const VariantManagement = () => {
   const [stands, setStands] = useState([]);
@@ -25,6 +23,9 @@ const VariantManagement = () => {
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [error, setError] = useState(null);
   
+  // STATE BARU: Untuk menangani penolakan ABAC Jam Operasional
+  const [abacError, setAbacError] = useState(null);
+  
   const [isGroupModalOpen, setGroupModalOpen] = useState(false);
   const [isOptionModalOpen, setOptionModalOpen] = useState(false);
 
@@ -33,6 +34,8 @@ const VariantManagement = () => {
     const fetchStands = async () => {
       try {
         setLoadingStands(true);
+        setAbacError(null);
+        
         const response = await getStands();
         setStands(response.data);
         if (response.data && response.data.length > 0) {
@@ -41,7 +44,11 @@ const VariantManagement = () => {
           setError("Anda tidak terhubung dengan stand manapun.");
         }
       } catch (err) {
-        setError('Gagal memuat data stand.');
+        if (err.isAbacError) {
+          setAbacError(err.message);
+        } else {
+          setError('Gagal memuat data stand.');
+        }
       } finally {
         setLoadingStands(false);
       }
@@ -57,6 +64,8 @@ const VariantManagement = () => {
       try {
         setLoadingGroups(true);
         setError(null);
+        setAbacError(null);
+        
         const response = await getVariantGroups(selectedStand.id);
         setVariantGroups(response.data);
         
@@ -66,16 +75,20 @@ const VariantManagement = () => {
              setSelectedGroupId(response.data[0].id);
           }
         } else {
-          setSelectedGroupId(null); // Kosongkan jika tidak ada grup
+          setSelectedGroupId(null);
         }
       } catch (err) {
-        setError('Gagal memuat grup varian.');
+        if (err.isAbacError) {
+          setAbacError(err.message);
+        } else {
+          setError('Gagal memuat grup varian.');
+        }
       } finally {
         setLoadingGroups(false);
       }
     };
     fetchGroups();
-  }, [selectedStand]); // <-- Re-fetch saat stand berubah
+  }, [selectedStand]); 
 
   // Fungsi untuk me-refresh data grup (setelah create/delete)
   const refreshGroups = async () => {
@@ -87,6 +100,9 @@ const VariantManagement = () => {
         setSelectedGroupId(response.data[0].id);
       }
     } catch (err) {
+      if (err.isAbacError) {
+        setAbacError(err.message);
+      }
       console.error("Gagal refresh grup:", err);
     }
   };
@@ -95,31 +111,75 @@ const VariantManagement = () => {
   const handleStandChange = (e) => {
     const stand = stands.find(s => s.id === parseInt(e.target.value));
     setSelectedStand(stand);
-    setSelectedGroupId(null); // Reset pilihan grup
+    setSelectedGroupId(null);
   };
   
   const handleCreateGroup = async (name) => {
-    await createVariantGroup(selectedStand.id, { name: name });
-    await refreshGroups(); // Ambil data baru
+    try {
+      await createVariantGroup(selectedStand.id, { name: name });
+      await refreshGroups();
+    } catch (err) {
+      if (err.isAbacError) alert(`Akses ditolak: ${err.message}`);
+      else setError('Gagal membuat grup varian.');
+    }
   };
 
   const handleDeleteGroup = async (groupId) => {
-    await deleteVariantGroup(selectedStand.id, groupId);
-    if (selectedGroupId === groupId) {
-      setSelectedGroupId(null); // Reset pilihan jika yg dihapus sedang dipilih
+    try {
+      await deleteVariantGroup(selectedStand.id, groupId);
+      if (selectedGroupId === groupId) {
+        setSelectedGroupId(null);
+      }
+      await refreshGroups();
+    } catch (err) {
+      if (err.isAbacError) alert(`Akses ditolak: ${err.message}`);
+      else setError('Gagal menghapus grup varian.');
     }
-    await refreshGroups(); // Ambil data baru
   };
   
   const handleCreateOption = async (data) => {
-    await createVariantOption(selectedStand.id, selectedGroupId, data);
-    await refreshGroups(); // Ambil data baru
+    try {
+      await createVariantOption(selectedStand.id, selectedGroupId, data);
+      await refreshGroups();
+    } catch (err) {
+      if (err.isAbacError) alert(`Akses ditolak: ${err.message}`);
+      else setError('Gagal membuat opsi varian.');
+    }
   };
   
   const handleDeleteOption = async (optionId) => {
-    await deleteVariantOption(selectedStand.id, selectedGroupId, optionId);
-    await refreshGroups(); // Ambil data baru
+    try {
+      await deleteVariantOption(selectedStand.id, selectedGroupId, optionId);
+      await refreshGroups();
+    } catch (err) {
+      if (err.isAbacError) alert(`Akses ditolak: ${err.message}`);
+      else setError('Gagal menghapus opsi varian.');
+    }
   };
+
+  // UI GUARD: Tampilkan halaman error jika terkena ABAC (Di luar jam operasional)
+  if (abacError) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center">
+        <div className="max-w-md rounded-2xl border border-red-200 bg-red-50 p-8 shadow-sm">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-500">
+            <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="mb-2 text-xl font-bold text-red-900">
+            Akses Ditolak
+          </h2>
+          <p className="text-sm font-medium text-red-800">
+            {abacError}
+          </p>
+          <div className="mt-4 rounded-lg bg-red-100/50 p-3 text-xs text-red-700">
+            Kantin sedang di luar jam operasional. Manajemen varian ditutup sementara.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const selectedGroup = variantGroups.find(group => group.id === selectedGroupId);
 
@@ -134,7 +194,6 @@ const VariantManagement = () => {
         <p className="text-gray-500 mt-1">Kelola grup varian dan opsi untuk menu Anda</p>
       </div>
       
-      {/* Selector Stand (Sama seperti MenuManagement) */}
       {stands.length > 1 && (
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Stand:</label>
@@ -185,7 +244,6 @@ const VariantManagement = () => {
         </div>
       </div>
       
-      {/* Render Modals */}
       <VariantGroupModal
         isOpen={isGroupModalOpen}
         onClose={() => setGroupModalOpen(false)}
