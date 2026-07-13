@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react'; // <-- Impor useEffect
+import React, { useState, useEffect } from 'react';
 import ImageUploader from '../components/ImageUploader';
 import ToggleSwitch from '../components/ToggleSwitch';
-import { getStands, updateStand } from '../api/apiService'; // <-- Impor API
+import { getStands, updateStand } from '../api/apiService';
 
 const StandSettings = () => {
-  // Hapus data dummy
   const [standData, setStandData] = useState(null);
   const [standId, setStandId] = useState(null);
   const [imageFile, setImageFile] = useState(null);
@@ -14,32 +13,39 @@ const StandSettings = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  
+  // STATE BARU: Untuk menangani penolakan ABAC Jam Operasional
+  const [abacError, setAbacError] = useState(null);
 
   // --- 1. Ambil data stand saat komponen dimuat ---
   useEffect(() => {
     const fetchStandData = async () => {
       try {
         setLoading(true);
-        // getStands() akan mengembalikan stand yg relevan
-        // (1 untuk seller, banyak untuk admin)
+        setAbacError(null);
+        
         const response = await getStands();
         
         if (response.data && response.data.length > 0) {
           const currentStand = response.data[0];
-          // Set data stand dari backend
           setStandData({
             name: currentStand.name,
             description: currentStand.description || '',
-            imageUrl: currentStand.imageUrl, // <-- 'imageUrl' dari serializer
-            isActive: currentStand.active, // <-- 'active' dari model
+            imageUrl: currentStand.imageUrl,
+            isActive: currentStand.active,
           });
           setStandId(currentStand.id);
         } else {
           setError("Tidak ada data stand yang ditemukan.");
         }
       } catch (err) {
-        setError("Gagal memuat data stand.");
-        console.error(err);
+        // TANGKAP ERROR ABAC
+        if (err.isAbacError) {
+          setAbacError(err.message);
+        } else {
+          setError("Gagal memuat data stand.");
+          console.error(err);
+        }
       } finally {
         setLoading(false);
       }
@@ -52,13 +58,10 @@ const StandSettings = () => {
     setStandData(prev => ({ ...prev, [name]: value }));
   };
 
-  // handleToggle kini menerima nilai baru (true/false) berkat perbaikan di ToggleSwitch
   const handleToggle = (newActiveState) => {
     setStandData(prev => ({ ...prev, isActive: newActiveState }));
   };
   
-  // Sederhanakan handleImageSelect, kita hanya perlu filenya.
-  // ImageUploader akan menangani preview-nya sendiri.
   const handleImageSelect = (file) => {
     setImageFile(file);
   };
@@ -72,39 +75,64 @@ const StandSettings = () => {
     setError(null);
     setSuccess(null);
 
-    // Buat FormData untuk mengirim data
     const formData = new FormData();
     formData.append('name', standData.name);
     formData.append('description', standData.description);
-    formData.append('active', standData.isActive); // <-- Backend field adalah 'active'
+    formData.append('active', standData.isActive);
 
-    // Hanya kirim gambar jika ada file baru
     if (imageFile) {
       formData.append('image', imageFile);
     }
 
     try {
-      // Panggil API
       const response = await updateStand(standId, formData);
       
-      // Update state dengan data yg baru disimpan (terutama URL gambar baru)
       setStandData({
          name: response.data.name,
          description: response.data.description || '',
          imageUrl: response.data.imageUrl,
          isActive: response.data.active,
       });
-      setImageFile(null); // Reset file
+      setImageFile(null);
       setSuccess("Perubahan berhasil disimpan!");
     } catch (err) {
-      setError("Gagal menyimpan perubahan.");
-      console.error(err);
+      // TANGKAP ERROR ABAC SAAT MENYIMPAN
+      if (err.isAbacError) {
+        alert(`Akses ditolak: ${err.message}`);
+      } else {
+        setError("Gagal menyimpan perubahan.");
+        console.error(err);
+      }
     } finally {
       setSaving(false);
     }
   };
 
-  // --- 3. Tampilkan Loading / Error ---
+  // --- 3. UI GUARD: Tampilkan halaman error jika terkena ABAC ---
+  if (abacError) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center">
+        <div className="max-w-md rounded-2xl border border-red-200 bg-red-50 p-8 shadow-sm">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-500">
+            <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="mb-2 text-xl font-bold text-red-900">
+            Akses Ditolak
+          </h2>
+          <p className="text-sm font-medium text-red-800">
+            {abacError}
+          </p>
+          <div className="mt-4 rounded-lg bg-red-100/50 p-3 text-xs text-red-700">
+            Kantin sedang di luar jam operasional. Pengaturan stand ditutup sementara.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- 4. Tampilkan Loading / Error / Konten Utama ---
   if (loading) {
     return <div className="p-4 text-center">Memuat pengaturan...</div>;
   }
@@ -114,7 +142,7 @@ const StandSettings = () => {
   }
   
   if (!standData) {
-    return null; // Atau tampilkan UI "stand tidak ditemukan"
+    return null; 
   }
 
   return (
@@ -123,7 +151,6 @@ const StandSettings = () => {
       <p className="text-gray-500 mt-1 mb-6">Kelola informasi dasar stand Anda</p>
       
       <form onSubmit={handleSubmit} className="max-w-2xl bg-white p-8 rounded-lg shadow-md">
-        {/* Tampilkan notifikasi Sukses / Error */}
         {success && <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded">{success}</div>}
         {error && <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded">{error}</div>}
 
@@ -132,16 +159,14 @@ const StandSettings = () => {
             <p className="text-sm text-gray-500 mt-1">Update detail stand Anda yang akan ditampilkan kepada pelanggan.</p>
         </div>
 
-        {/* Komponen Image Uploader */}
         <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">Foto Stand / Logo</label>
             <ImageUploader 
-              initialImage={standData.imageUrl} // <-- Data dari API
+              initialImage={standData.imageUrl} 
               onImageSelect={handleImageSelect}
             />
         </div>
 
-        {/* Nama Stand */}
         <div className="mb-6">
             <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nama Stand</label>
             <input 
@@ -154,7 +179,6 @@ const StandSettings = () => {
             />
         </div>
 
-        {/* Deskripsi Stand */}
         <div className="mb-8">
             <label htmlFor="description" className="block text-sm font-medium text-gray-700">Deskripsi Stand</label>
             <textarea 
@@ -168,7 +192,6 @@ const StandSettings = () => {
             <p className="mt-2 text-xs text-gray-500">Deskripsi ini akan membantu pelanggan mengenal stand Anda lebih baik.</p>
         </div>
         
-        {/* Status Operasional */}
         <div className="mb-8 p-4 bg-gray-50 rounded-lg">
             <label className="block text-sm font-medium text-gray-900">Status Operasional</label>
             <div className="flex items-center justify-between mt-2">
@@ -181,7 +204,6 @@ const StandSettings = () => {
                         }
                     </p>
                 </div>
-                {/* --- 4. Perbaiki prop 'ToggleSwitch' --- */}
                 <ToggleSwitch 
                   isOn={standData.isActive} 
                   handleToggle={handleToggle} 
@@ -189,8 +211,6 @@ const StandSettings = () => {
             </div>
         </div>
 
-
-        {/* Tombol Simpan */}
         <div className="flex justify-end">
             <button
                 type="submit"
