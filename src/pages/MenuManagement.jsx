@@ -18,13 +18,18 @@ const MenuManagement = () => {
   const [loadingMenus, setLoadingMenus] = useState(false);
   const [error, setError] = useState(null);
   
+  // STATE BARU: Untuk menangani penolakan ABAC Jam Operasional
+  const [abacError, setAbacError] = useState(null);
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null); // State khusus mode edit
+  const [editingItem, setEditingItem] = useState(null);
 
   useEffect(() => {
     const fetchStands = async () => {
       try {
         setLoadingStands(true);
+        setAbacError(null);
+        
         const response = await getStands();
         setStands(response.data);
         if (response.data && response.data.length > 0) {
@@ -33,7 +38,12 @@ const MenuManagement = () => {
           setError("Anda tidak terhubung dengan stand manapun.");
         }
       } catch (err) {
-        setError('Gagal memuat data stand.');
+        // TANGKAP ERROR ABAC
+        if (err.isAbacError) {
+          setAbacError(err.message);
+        } else {
+          setError('Gagal memuat data stand.');
+        }
       } finally {
         setLoadingStands(false);
       }
@@ -50,10 +60,17 @@ const MenuManagement = () => {
       try {
         setLoadingMenus(true);
         setError(null); 
+        setAbacError(null);
+        
         const response = await getMenus(selectedStand.id);
         setMenuItems(response.data);
       } catch (err) {
-        setError(`Gagal memuat menu untuk ${selectedStand.name}.`);
+        // TANGKAP ERROR ABAC
+        if (err.isAbacError) {
+          setAbacError(err.message);
+        } else {
+          setError(`Gagal memuat menu untuk ${selectedStand.name}.`);
+        }
       } finally {
         setLoadingMenus(false);
       }
@@ -72,7 +89,12 @@ const MenuManagement = () => {
     try {
       await updateMenu(standId, menuId, { available: newAvailableState });
     } catch (err) {
-      setError(`Gagal update ${item.name}.`);
+      if (err.isAbacError) {
+         alert(`Akses ditolak: ${err.message}`);
+      } else {
+         setError(`Gagal update ${item.name}.`);
+      }
+      // Revert state jika gagal
       setMenuItems(prevItems =>
         prevItems.map(i => i.id === menuId ? { ...i, available: item.available } : i )
       );
@@ -90,7 +112,12 @@ const MenuManagement = () => {
     try {
       await deleteMenu(standId, menuId);
     } catch (err) {
-      setError(`Gagal menghapus ${item.name}.`);
+      if (err.isAbacError) {
+         alert(`Akses ditolak: ${err.message}`);
+      } else {
+         setError(`Gagal menghapus ${item.name}.`);
+      }
+      // Revert state jika gagal
       setMenuItems(originalItems);
     }
   };
@@ -101,22 +128,53 @@ const MenuManagement = () => {
     setSelectedStand(stand);
   };
 
-  // FUNGSI GABUNGAN: Untuk Tambah Baru & Simpan Edit
   const handleSaveMenu = async (formData) => {
     if (!selectedStand) throw new Error("Tidak ada stand yang dipilih.");
     
-    if (editingItem) {
-      // PROSES EDIT (PATCH)
-      const response = await updateMenu(selectedStand.id, editingItem.id, formData);
-      setMenuItems(prevItems => prevItems.map(item => item.id === editingItem.id ? response.data : item));
-    } else {
-      // PROSES TAMBAH (POST)
-      const response = await createMenu(selectedStand.id, formData);
-      setMenuItems(prevItems => [response.data, ...prevItems]);
+    try {
+      if (editingItem) {
+        // PROSES EDIT (PATCH)
+        const response = await updateMenu(selectedStand.id, editingItem.id, formData);
+        setMenuItems(prevItems => prevItems.map(item => item.id === editingItem.id ? response.data : item));
+      } else {
+        // PROSES TAMBAH (POST)
+        const response = await createMenu(selectedStand.id, formData);
+        setMenuItems(prevItems => [response.data, ...prevItems]);
+      }
+      setIsModalOpen(false);
+      setEditingItem(null);
+    } catch (err) {
+       if (err.isAbacError) {
+         alert(`Akses ditolak: ${err.message}`);
+       } else {
+         throw err; // Lempar ke komponen modal agar ditangani di sana
+       }
     }
-    setIsModalOpen(false);
-    setEditingItem(null);
   };
+
+  // UI GUARD: Tampilkan halaman error jika terkena ABAC (Di luar jam operasional)
+  if (abacError) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center">
+        <div className="max-w-md rounded-2xl border border-red-200 bg-red-50 p-8 shadow-sm">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-500">
+            <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="mb-2 text-xl font-bold text-red-900">
+            Akses Ditolak
+          </h2>
+          <p className="text-sm font-medium text-red-800">
+            {abacError}
+          </p>
+          <div className="mt-4 rounded-lg bg-red-100/50 p-3 text-xs text-red-700">
+            Kantin sedang di luar jam operasional. Manajemen menu ditutup sementara.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loadingStands) return <div className="text-center p-4">Memuat stand...</div>;
   
@@ -129,7 +187,7 @@ const MenuManagement = () => {
         </div>
         <button 
           onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
-          className="flex items-center bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors"
+          className="flex items-center bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={!selectedStand} 
         >
           <Plus size={20} className="mr-2" />
@@ -163,13 +221,12 @@ const MenuManagement = () => {
               item={item} 
               onAvailabilityChange={() => handleAvailabilityChange(item)}
               onDelete={() => handleDeleteMenu(item)}
-              onEdit={() => { setEditingItem(item); setIsModalOpen(true); }} // TRIGGER MODAL EDIT
+              onEdit={() => { setEditingItem(item); setIsModalOpen(true); }}
             />
           ))}
         </div>
       )}
 
-      {/* Lempar initialData ke MenuModal */}
       <MenuModal
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setEditingItem(null); }}
