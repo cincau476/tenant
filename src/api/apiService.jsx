@@ -1,5 +1,6 @@
 // src/api/apiService.jsx
 import axios from 'axios';
+import { getClientLocation } from '../api/geoUtils';
 
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -28,19 +29,34 @@ const processQueue = (error, token = null) => {
 // ==========================================
 // REQUEST INTERCEPTOR
 // ==========================================
-apiClient.interceptors.request.use((config) => {
-  // PERBAIKAN 1: Sesuai dengan aplikasi Login utama (LoginPage.jsx)
-  // Gunakan 'tenant_token' BUKAN 'access_token'
+apiClient.interceptors.request.use(async (config) => {
+  // --- 1. OTORISASI TOKEN ---
   const token = sessionStorage.getItem('tenant_token');
-  
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // --- 2. INJEKSI ATRIBUT ABAC ---
+  try {
+    // Sisipkan waktu client dalam format ISO 8601
+    config.headers['X-ABAC-Client-Time'] = new Date().toISOString();
+
+    // Tunggu data lokasi (pastikan geoUtils memiliki mekanisme cache & timeout)
+    const location = await getClientLocation();
+    
+    if (location) {
+      config.headers['X-ABAC-Latitude'] = location.latitude;
+      config.headers['X-ABAC-Longitude'] = location.longitude;
+    }
+  } catch (error) {
+    // Gunakan console.warn agar tidak terlihat seperti error fatal di production
+    console.warn("Gagal menyisipkan atribut ABAC lokasi:", error);
+  }
+
   return config;
 }, (error) => {
   return Promise.reject(error);
 });
-
 // ==========================================
 // RESPONSE INTERCEPTOR (SILENT REFRESH)
 // ==========================================
