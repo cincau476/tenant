@@ -45,8 +45,8 @@ apiClient.interceptors.request.use(async (config) => {
     const location = await getClientLocation();
     
     if (location) {
-      config.headers['X-ABAC-Latitude'] = location.latitude;
-      config.headers['X-ABAC-Longitude'] = location.longitude;
+      config.headers['X-User-Latitude'] = location.latitude;
+      config.headers['X-User-Longitude'] = location.longitude;
     }
   } catch (error) {
     // Gunakan console.warn agar tidak terlihat seperti error fatal di production
